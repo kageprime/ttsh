@@ -1,0 +1,6 @@
+{
+  "name": "Tales That Shaped Humanity — Bibleverse Storybook",
+  "description": "An interactive, contemplative Bible storybook and listening scripture experience with chapter-by-chapter visual meditations, ambient audio, and guided reflections.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
