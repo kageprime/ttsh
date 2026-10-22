@@ -1,14 +1,24 @@
 import React, { useEffect, useRef } from 'react';
-import { CanvasSimulationMode, SceneTheme } from '../data/stories';
 import {
+  CanvasSimulationMode,
+  ChapterAnimationConfig,
+  SceneTheme,
+} from '../data/stories';
+import {
+  ChapterVisualMotif,
   TextDrivenShaderState,
   computeTextDrivenShaderTargets,
   lerpShaderState,
 } from '../utils/storybookLogic';
+import { renderChapterAnimationOverlay } from '../utils/chapterAnimations';
 
 export interface LivingStoryCanvasProps {
   theme: SceneTheme | 'hero-waterfall';
   canvasMode?: CanvasSimulationMode;
+  episodeId?: string;
+  chapterNumber?: number;
+  animationConfig?: ChapterAnimationConfig;
+  backgroundImageUrl?: string;
   activeText?: string;
   isSoundCueActive?: boolean;
   surgeCount?: number;
@@ -40,6 +50,9 @@ uniform float u_windIntensity;
 uniform float u_lightBloom;
 uniform float u_waterParting;
 uniform float u_subMode;
+uniform vec3 u_tintTop;
+uniform vec3 u_tintHorizon;
+uniform vec3 u_tintGround;
 
 float hash(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -104,15 +117,15 @@ vec3 renderOceanScene(vec2 uv, float aspect, float t) {
   float horizon = 0.46 - u_waterParting * 0.04;
   vec2 lightPos = vec2(0.62 + sin(t * 0.08) * 0.03, 0.64 + u_waterParting * 0.05);
   float windBoost = u_windIntensity;
-  vec3 col = vec3(0.03, 0.04, 0.07);
+  vec3 col = u_tintTop;
 
   if (uv.y >= horizon) {
     float skyT = (uv.y - horizon) / (1.0 - horizon);
-    vec3 zenith = mix(vec3(0.025, 0.04, 0.085), vec3(0.04, 0.09, 0.18), u_waterParting);
-    vec3 midSky = mix(vec3(0.08, 0.145, 0.23), vec3(0.14, 0.25, 0.38), u_waterParting);
+    vec3 zenith = mix(u_tintTop, vec3(0.04, 0.09, 0.18), u_waterParting * 0.5);
+    vec3 midSky = mix(u_tintTop * 1.8 + vec3(0.04, 0.08, 0.14), u_tintHorizon * 0.65, 0.5);
     vec3 horizonGlow = mix(
-      vec3(0.26, 0.35, 0.45),
-      vec3(0.55, 0.62, 0.72),
+      u_tintHorizon,
+      u_tintHorizon * 1.35 + vec3(0.12, 0.12, 0.10),
       clamp(u_surge * 0.4 + u_lightBloom * 0.5 + u_waterParting * 0.3, 0.0, 1.0)
     );
 
@@ -132,15 +145,14 @@ vec3 renderOceanScene(vec2 uv, float aspect, float t) {
 
     vec2 cloudUv = vec2(uv.x * aspect * 1.4 - t * (0.016 + windBoost * 0.02), uv.y * 3.2);
     float cNoise = fbm(cloudUv + fbm(cloudUv * 1.6));
-    // Part clouds near the center when u_waterParting increases
     float partGap = 1.0 - u_waterParting * 0.45 * exp(-abs(uv.y - (horizon + 0.16)) * 8.0);
     float cloudMask = smoothstep(0.38, 0.78, cNoise * partGap) * smoothstep(0.92, 0.04, skyT);
-    vec3 cloudDark = vec3(0.05, 0.09, 0.15);
+    vec3 cloudDark = u_tintTop * 1.4;
     vec3 cloudLit = coronaTint * exp(-distL * 2.5);
     col = mix(col, cloudDark + cloudLit * 0.55, cloudMask * 0.68);
 
     float hMist = exp(-abs(uv.y - horizon) * 26.0);
-    col = mix(col, vec3(0.45, 0.55, 0.66), hMist * (0.42 + u_waterParting * 0.2));
+    col = mix(col, u_tintHorizon * 1.15, hMist * (0.42 + u_waterParting * 0.2));
   } else {
     float dy = max(0.004, horizon - uv.y);
     float z = 0.32 / dy;
@@ -157,10 +169,8 @@ vec3 renderOceanScene(vec2 uv, float aspect, float t) {
     float fresnel = pow(1.0 - clamp(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0, 1.0), 3.2);
     fresnel = clamp(fresnel * 0.75 + 0.15, 0.0, 1.0);
 
-    vec3 deepWater = (u_subMode > 1.5)
-      ? vec3(0.02, 0.09, 0.14)
-      : vec3(0.02, 0.04, 0.08);
-    vec3 skyReflect = mix(vec3(0.18, 0.27, 0.37), vec3(0.28, 0.36, 0.46), u_waterParting) + normal.x * 0.06;
+    vec3 deepWater = mix(u_tintGround, vec3(0.02, 0.09, 0.14), clamp(u_subMode * 0.5, 0.0, 1.0));
+    vec3 skyReflect = u_tintHorizon * 0.85 + normal.x * 0.06;
 
     col = mix(deepWater, skyReflect, fresnel);
 
@@ -178,10 +188,10 @@ vec3 renderOceanScene(vec2 uv, float aspect, float t) {
     col += specColor * (spec + sparkle) * smoothstep(0.0, 0.04, dy);
 
     float swellFoam = smoothstep(0.32, 0.68, h0) * exp(-dy * 4.5) * (0.20 + windBoost * 0.18);
-    col += vec3(0.65, 0.75, 0.85) * swellFoam;
+    col += u_tintHorizon * 1.25 * swellFoam;
 
     float hMist = exp(-dy * 24.0);
-    col = mix(col, vec3(0.40, 0.50, 0.62), hMist * 0.52);
+    col = mix(col, u_tintHorizon, hMist * 0.52);
     col *= smoothstep(0.0, 0.18, uv.y + 0.08);
   }
   return col;
@@ -190,13 +200,13 @@ vec3 renderOceanScene(vec2 uv, float aspect, float t) {
 vec3 renderDawnScene(vec2 uv, float aspect, float t) {
   float horizon = 0.40;
   vec2 sunPos = vec2(0.5 + (u_pointer.x - 0.5) * 0.08, 0.44 + u_lightBloom * 0.04 + u_surge * 0.03);
-  vec3 col = vec3(0.05, 0.04, 0.07);
+  vec3 col = u_tintTop;
 
   if (uv.y >= horizon) {
     float skyT = (uv.y - horizon) / (1.0 - horizon);
-    vec3 nightZenith = vec3(0.04, 0.035, 0.08);
-    vec3 violetMid = vec3(0.16, 0.11, 0.20);
-    vec3 warmHorizon = mix(vec3(0.50, 0.31, 0.14), vec3(0.68, 0.44, 0.20), u_lightBloom);
+    vec3 nightZenith = u_tintTop;
+    vec3 violetMid = mix(u_tintTop, u_tintHorizon, 0.38);
+    vec3 warmHorizon = mix(u_tintHorizon * 0.8, u_tintHorizon * 1.15, u_lightBloom);
 
     col = mix(warmHorizon, violetMid, smoothstep(0.0, 0.48, skyT));
     col = mix(col, nightZenith, smoothstep(0.42, 1.0, skyT));
@@ -216,7 +226,7 @@ vec3 renderDawnScene(vec2 uv, float aspect, float t) {
 
     vec2 mistUv = vec2(uv.x * aspect * 1.3 - t * 0.015, uv.y * 2.8);
     float mist = fbm(mistUv);
-    col = mix(col, vec3(0.85, 0.62, 0.34) * exp(-distS * 1.8), mist * 0.32 * (1.0 - skyT));
+    col = mix(col, u_tintHorizon * exp(-distS * 1.8), mist * 0.32 * (1.0 - skyT));
   } else {
     float dy = max(0.005, horizon - uv.y);
     float z = 0.28 / dy;
@@ -224,8 +234,8 @@ vec3 renderDawnScene(vec2 uv, float aspect, float t) {
     vec2 wp = vec2(x, z);
 
     float w = waterWaves(wp * 0.85, t * 0.75, u_windIntensity * 0.5, u_pointer, horizon, aspect);
-    vec3 deepAmberSea = vec3(0.05, 0.035, 0.06);
-    vec3 goldReflect = vec3(0.48, 0.29, 0.14);
+    vec3 deepAmberSea = u_tintGround;
+    vec3 goldReflect = u_tintHorizon * 0.75;
 
     float fresnel = exp(-dy * 3.2);
     col = mix(deepAmberSea, goldReflect, fresnel * 0.75);
@@ -236,21 +246,21 @@ vec3 renderDawnScene(vec2 uv, float aspect, float t) {
     col += vec3(0.98, 0.82, 0.48) * goldPath * crest * (0.75 + u_lightBloom * 0.4 + u_surge * 0.35);
 
     float hMist = exp(-dy * 22.0);
-    col = mix(col, vec3(0.75, 0.48, 0.22), hMist * 0.55);
+    col = mix(col, u_tintHorizon, hMist * 0.55);
   }
   return col;
 }
 
 vec3 renderForestScene(vec2 uv, float aspect, float t) {
   float poolHorizon = 0.28;
-  vec3 topCanopy = vec3(0.025, 0.065, 0.045);
-  vec3 midValley = vec3(0.07, 0.17, 0.125);
+  vec3 topCanopy = u_tintTop;
+  vec3 midValley = mix(u_tintGround, u_tintHorizon * 0.45, 0.5);
   vec3 col = mix(midValley, topCanopy, smoothstep(0.25, 1.0, uv.y));
 
   vec2 rayCoord = vec2((uv.x - 0.62) * aspect + (1.0 - uv.y) * 0.38, uv.y);
   float shaftNoise = fbm(vec2(rayCoord.x * 3.5 - t * 0.03, uv.y * 1.4));
   float shaftMask = exp(-rayCoord.x * rayCoord.x * 4.2) * smoothstep(0.15, 0.95, uv.y);
-  vec3 shaftColor = mix(vec3(0.45, 0.68, 0.56), vec3(0.92, 0.78, 0.46), 0.32 + u_lightBloom * 0.4 + u_surge * 0.28);
+  vec3 shaftColor = mix(u_tintHorizon, vec3(0.92, 0.78, 0.46), 0.32 + u_lightBloom * 0.4 + u_surge * 0.28);
   col += shaftColor * shaftMask * (0.28 + shaftNoise * 0.26);
 
   if (uv.y >= poolHorizon) {
@@ -261,43 +271,43 @@ vec3 renderForestScene(vec2 uv, float aspect, float t) {
 
     float r1 = 0.48 - 0.10 * sin(uv.x * 3.2 + 0.5) + 0.035 * fbm(vec2(uv.x * 5.0, 1.0));
     float mask1 = smoothstep(r1 + 0.018, r1 - 0.018, uv.y);
-    col = mix(col, vec3(0.045, 0.11, 0.08), mask1 * 0.84);
+    col = mix(col, u_tintGround * 0.85, mask1 * 0.84);
 
     float mist1 = fbm(vec2(uv.x * aspect * 1.8 - t * (0.025 + u_windIntensity * 0.02), uv.y * 4.0));
-    col += vec3(0.52, 0.70, 0.62) * exp(-abs(uv.y - poolHorizon - 0.07) * 11.0) * mist1 * 0.42;
+    col += u_tintHorizon * exp(-abs(uv.y - poolHorizon - 0.07) * 11.0) * mist1 * 0.42;
 
     float r2 = 0.39 + 0.11 * cos(uv.x * 2.6 - 1.1) + 0.025 * fbm(vec2(uv.x * 7.0, 2.0));
     float mask2 = smoothstep(r2 + 0.016, r2 - 0.016, uv.y);
-    col = mix(col, vec3(0.025, 0.068, 0.048), mask2 * 0.90);
+    col = mix(col, u_tintGround * 0.55, mask2 * 0.90);
   } else {
     float dy = max(0.005, poolHorizon - uv.y);
     float z = 0.22 / dy;
     float x = (uv.x - 0.5) * z * aspect;
     float w = waterWaves(vec2(x, z), t * 0.85, u_windIntensity * 0.45, u_pointer, poolHorizon, aspect);
 
-    vec3 poolBase = vec3(0.02, 0.05, 0.04);
-    vec3 poolReflect = vec3(0.14, 0.28, 0.22);
+    vec3 poolBase = u_tintGround * 0.45;
+    vec3 poolReflect = u_tintHorizon * 0.55;
     col = mix(poolBase, poolReflect, exp(-dy * 4.5) * 0.75);
 
     float wfDx = (uv.x - 0.58) * aspect + w * 0.12;
     float poolShimmer = exp(-abs(wfDx) * 4.5) * smoothstep(0.0, 0.45, w + 0.18);
-    col += mix(vec3(0.68, 0.84, 0.78), vec3(0.95, 0.82, 0.50), u_lightBloom * 0.5 + u_surge * 0.3) * poolShimmer * 0.55;
+    col += mix(u_tintHorizon, vec3(0.95, 0.82, 0.50), u_lightBloom * 0.5 + u_surge * 0.3) * poolShimmer * 0.55;
 
     float bankMist = exp(-dy * 24.0);
-    col = mix(col, vec3(0.32, 0.48, 0.42), bankMist * 0.45);
+    col = mix(col, u_tintHorizon * 0.75, bankMist * 0.45);
   }
   return col;
 }
 
 vec3 renderCosmosScene(vec2 uv, float aspect, float t) {
   float horizon = 0.24;
-  vec3 col = vec3(0.02, 0.025, 0.06);
+  vec3 col = u_tintTop;
 
   if (uv.y >= horizon) {
     float skyT = (uv.y - horizon) / (1.0 - horizon);
-    vec3 spaceTop = vec3(0.02, 0.025, 0.06);
-    vec3 spaceMid = vec3(0.08, 0.065, 0.16);
-    vec3 duneGlow = mix(vec3(0.22, 0.15, 0.13), vec3(0.38, 0.26, 0.18), u_lightBloom);
+    vec3 spaceTop = u_tintTop;
+    vec3 spaceMid = mix(u_tintTop, u_tintHorizon, 0.35);
+    vec3 duneGlow = mix(u_tintGround * 1.4, u_tintHorizon * 0.8, u_lightBloom);
 
     col = mix(duneGlow, spaceMid, smoothstep(0.0, 0.38, skyT));
     col = mix(col, spaceTop, smoothstep(0.35, 1.0, skyT));
@@ -305,7 +315,7 @@ vec3 renderCosmosScene(vec2 uv, float aspect, float t) {
     vec2 nUv = vec2(uv.x * aspect * 1.1 + t * 0.008, uv.y * 1.3);
     float neb = fbm(nUv + fbm(nUv * 1.5 - t * 0.01));
     float nebMask = smoothstep(0.35, 0.82, neb) * smoothstep(0.05, 0.85, skyT);
-    col += mix(vec3(0.28, 0.22, 0.48), vec3(0.78, 0.58, 0.26), neb) * nebMask * (0.36 + u_lightBloom * 0.25 + u_surge * 0.25);
+    col += mix(u_tintHorizon * 0.8, vec3(0.78, 0.58, 0.26), neb) * nebMask * (0.36 + u_lightBloom * 0.25 + u_surge * 0.25);
 
     vec2 sUv = vec2(uv.x * aspect, uv.y);
     float s1 = starLayer(sUv, 20.0, t, 0.84);
@@ -315,11 +325,11 @@ vec3 renderCosmosScene(vec2 uv, float aspect, float t) {
   } else {
     float duneCurve = horizon + 0.03 * sin(uv.x * 4.5 + 0.8) + 0.015 * cos(uv.x * 9.0);
     float dy = max(0.0, duneCurve - uv.y);
-    vec3 duneLit = vec3(0.11, 0.085, 0.09);
-    vec3 duneShadow = vec3(0.03, 0.025, 0.04);
+    vec3 duneLit = u_tintGround * 1.35;
+    vec3 duneShadow = u_tintGround * 0.45;
     float windSand = fbm(vec2(uv.x * aspect * 3.0 - t * (0.10 + u_windIntensity * 0.08), uv.y * 8.0));
     col = mix(duneLit, duneShadow, smoothstep(0.0, 0.18, dy));
-    col += vec3(0.65, 0.48, 0.26) * exp(-dy * 24.0) * windSand * (0.25 + u_surge * 0.25);
+    col += u_tintHorizon * exp(-dy * 24.0) * windSand * (0.25 + u_surge * 0.25);
   }
   return col;
 }
@@ -395,6 +405,10 @@ function createMote(w: number, h: number, colors: string[]): SoftMote {
 export const LivingStoryCanvas: React.FC<LivingStoryCanvasProps> = ({
   theme,
   canvasMode,
+  episodeId,
+  chapterNumber,
+  animationConfig,
+  backgroundImageUrl,
   activeText = '',
   isSoundCueActive = false,
   surgeCount = 0,
@@ -407,29 +421,51 @@ export const LivingStoryCanvas: React.FC<LivingStoryCanvasProps> = ({
   const pointerRef = useRef<{ x: number; y: number }>({ x: 0.5, y: 0.5 });
   const surgeEnergyRef = useRef<number>(0);
 
-  const initialShaderState = computeTextDrivenShaderTargets(
+  const liveTargetState = computeTextDrivenShaderTargets(
     theme,
     canvasMode,
     activeText,
-    isSoundCueActive
+    isSoundCueActive,
+    episodeId,
+    chapterNumber,
+    animationConfig
   );
-  const currentStateRef = useRef<TextDrivenShaderState>(initialShaderState);
-  const targetStateRef = useRef<TextDrivenShaderState>(initialShaderState);
+  const currentStateRef = useRef<TextDrivenShaderState>(liveTargetState);
+  const targetStateRef = useRef<TextDrivenShaderState>(liveTargetState);
   const moteColorsRef = useRef<string[]>(getMoteColorsForTheme(theme));
 
-  // Update target shader state whenever chapter theme, mode, or active text/cue changes
-  // without restarting the WebGL context so transitions are 100% seamless
+  // Track chapter motif cross-dissolves so each chapter's animated construction blends smoothly
+  const activeMotifRef = useRef<ChapterVisualMotif>(liveTargetState.motif);
+  const prevMotifRef = useRef<ChapterVisualMotif | null>(null);
+  const motifBlendRef = useRef<number>(1.0);
+
   useEffect(() => {
-    targetStateRef.current = computeTextDrivenShaderTargets(
+    const nextTarget = computeTextDrivenShaderTargets(
       theme,
       canvasMode,
       activeText,
-      isSoundCueActive
+      isSoundCueActive,
+      episodeId,
+      chapterNumber,
+      animationConfig
     );
+    if (nextTarget.motif !== activeMotifRef.current) {
+      prevMotifRef.current = activeMotifRef.current;
+      activeMotifRef.current = nextTarget.motif;
+      motifBlendRef.current = 0.0;
+    }
+    targetStateRef.current = nextTarget;
     moteColorsRef.current = getMoteColorsForTheme(theme);
-  }, [theme, canvasMode, activeText, isSoundCueActive]);
+  }, [
+    theme,
+    canvasMode,
+    activeText,
+    isSoundCueActive,
+    episodeId,
+    chapterNumber,
+    animationConfig,
+  ]);
 
-  // Trigger smooth organic wave/light surge when surgeCount increments
   useEffect(() => {
     if (surgeCount > 0) {
       surgeEnergyRef.current = Math.min(1.0, surgeEnergyRef.current + 0.75);
@@ -471,6 +507,9 @@ export const LivingStoryCanvas: React.FC<LivingStoryCanvasProps> = ({
     let uLightLoc: WebGLUniformLocation | null = null;
     let uPartingLoc: WebGLUniformLocation | null = null;
     let uSubModeLoc: WebGLUniformLocation | null = null;
+    let uTintTopLoc: WebGLUniformLocation | null = null;
+    let uTintHorizonLoc: WebGLUniformLocation | null = null;
+    let uTintGroundLoc: WebGLUniformLocation | null = null;
 
     if (gl) {
       const compileShader = (type: number, src: string) => {
@@ -518,6 +557,9 @@ export const LivingStoryCanvas: React.FC<LivingStoryCanvasProps> = ({
             uLightLoc = gl.getUniformLocation(program, 'u_lightBloom');
             uPartingLoc = gl.getUniformLocation(program, 'u_waterParting');
             uSubModeLoc = gl.getUniformLocation(program, 'u_subMode');
+            uTintTopLoc = gl.getUniformLocation(program, 'u_tintTop');
+            uTintHorizonLoc = gl.getUniformLocation(program, 'u_tintHorizon');
+            uTintGroundLoc = gl.getUniformLocation(program, 'u_tintGround');
           }
         }
       }
@@ -574,11 +616,16 @@ export const LivingStoryCanvas: React.FC<LivingStoryCanvasProps> = ({
       const elapsed = (nowMs - startMs) * 0.001 + 4.2;
       surgeEnergyRef.current = Math.max(0, surgeEnergyRef.current * 0.96);
 
-      // Smoothly cross-dissolve WebGL scene weights and text-driven uniforms (~1.8s silk transition)
+      // Smoothly cross-dissolve WebGL scene weights and per-chapter color palettes
       currentStateRef.current = lerpShaderState(
         currentStateRef.current,
         targetStateRef.current,
-        isHeadless ? 0.65 : dtSec * 1.45
+        isHeadless ? 0.75 : dtSec * 1.65
+      );
+
+      motifBlendRef.current = Math.min(
+        1.0,
+        motifBlendRef.current + (isHeadless ? 0.85 : dtSec * 1.2)
       );
 
       const st = currentStateRef.current;
@@ -600,22 +647,28 @@ export const LivingStoryCanvas: React.FC<LivingStoryCanvasProps> = ({
         gl.uniform1f(uLightLoc, st.lightBloom);
         gl.uniform1f(uPartingLoc, st.waterParting);
         gl.uniform1f(uSubModeLoc, st.subMode);
+        gl.uniform3f(uTintTopLoc, st.tintTop[0], st.tintTop[1], st.tintTop[2]);
+        gl.uniform3f(
+          uTintHorizonLoc,
+          st.tintHorizon[0],
+          st.tintHorizon[1],
+          st.tintHorizon[2]
+        );
+        gl.uniform3f(
+          uTintGroundLoc,
+          st.tintGround[0],
+          st.tintGround[1],
+          st.tintGround[2]
+        );
         gl.drawArrays(gl.TRIANGLES, 0, 6);
       } else if (ctx2d) {
         const skyGrad = ctx2d.createLinearGradient(0, 0, 0, height);
-        if (st.weights.forest > 0.45) {
-          skyGrad.addColorStop(0, '#050D09');
-          skyGrad.addColorStop(0.55, '#122B1F');
-          skyGrad.addColorStop(1, '#050B08');
-        } else if (st.weights.dawn > 0.45) {
-          skyGrad.addColorStop(0, '#090812');
-          skyGrad.addColorStop(0.52, '#4A2C18');
-          skyGrad.addColorStop(1, '#08060A');
-        } else {
-          skyGrad.addColorStop(0, '#050811');
-          skyGrad.addColorStop(0.54, '#243748');
-          skyGrad.addColorStop(1, '#04070D');
-        }
+        const topRgb = `rgb(${Math.round(st.tintTop[0] * 255)}, ${Math.round(st.tintTop[1] * 255)}, ${Math.round(st.tintTop[2] * 255)})`;
+        const horRgb = `rgb(${Math.round(st.tintHorizon[0] * 255)}, ${Math.round(st.tintHorizon[1] * 255)}, ${Math.round(st.tintHorizon[2] * 255)})`;
+        const gndRgb = `rgb(${Math.round(st.tintGround[0] * 255)}, ${Math.round(st.tintGround[1] * 255)}, ${Math.round(st.tintGround[2] * 255)})`;
+        skyGrad.addColorStop(0, topRgb);
+        skyGrad.addColorStop(0.54, horRgb);
+        skyGrad.addColorStop(1, gndRgb);
         ctx2d.fillStyle = skyGrad;
         ctx2d.fillRect(0, 0, width, height);
       }
@@ -624,6 +677,37 @@ export const LivingStoryCanvas: React.FC<LivingStoryCanvasProps> = ({
         if (gl && program) {
           ctx2d.clearRect(0, 0, width, height);
         }
+
+        // 1. Render bespoke chapter-specific narrative animation (Constructing Eden, Serpent, Fig Leaves, Flaming Sword, Dove, etc.)
+        if (prevMotifRef.current && motifBlendRef.current < 1.0) {
+          renderChapterAnimationOverlay({
+            ctx: ctx2d,
+            width,
+            height,
+            elapsed,
+            motif: prevMotifRef.current,
+            alpha: 1.0 - motifBlendRef.current,
+            surge: surgeEnergyRef.current,
+            windIntensity: st.windIntensity,
+            lightBloom: st.lightBloom,
+            pointer: pointerRef.current,
+          });
+        }
+
+        renderChapterAnimationOverlay({
+          ctx: ctx2d,
+          width,
+          height,
+          elapsed,
+          motif: activeMotifRef.current,
+          alpha: motifBlendRef.current,
+          surge: surgeEnergyRef.current,
+          windIntensity: st.windIntensity,
+          lightBloom: st.lightBloom,
+          pointer: pointerRef.current,
+        });
+
+        // 2. Render subtle atmospheric light motes
         for (let i = 0; i < motes.length; i++) {
           const m = motes[i];
           m.x +=
@@ -687,34 +771,46 @@ export const LivingStoryCanvas: React.FC<LivingStoryCanvasProps> = ({
     surgeEnergyRef.current = 0.85;
   };
 
-  const radialScrimOpacity = highContrast ? 0.84 : 0.68;
+  const radialScrimOpacity = highContrast ? 0.82 : 0.62;
 
   return (
     <div
       onPointerMove={handlePointerMove}
       onPointerDown={handlePointerDown}
+      data-testid="living-story-canvas"
+      data-chapter-motif={liveTargetState.motif}
+      data-chapter-label={liveTargetState.motifLabel}
       className={`overflow-hidden select-none bg-[#06080E] ${className}`}
       aria-hidden="true"
     >
-      {/* Persistent Real-time WebGL GLSL Water, Mist, Dawn & Sky Shader */}
+      {/* Optional Chapter Background Image Asset with Smooth Atmospheric Blend */}
+      {backgroundImageUrl && (
+        <div
+          data-testid="chapter-background-image"
+          className="absolute inset-0 bg-cover bg-center opacity-35 mix-blend-screen transition-all duration-1000 pointer-events-none"
+          style={{ backgroundImage: `url(${backgroundImageUrl})` }}
+        />
+      )}
+
+      {/* Persistent Real-time WebGL GLSL Chapter-Graded Sky, Water, Dawn & Terrain Shader */}
       <canvas
         ref={glCanvasRef}
         className="absolute inset-0 w-full h-full block pointer-events-none"
       />
 
-      {/* Subtle atmospheric dust & light motes */}
+      {/* Bespoke Chapter Narrative Animation & Atmospheric Motes */}
       <canvas
         ref={moteCanvasRef}
         className="absolute inset-0 w-full h-full block pointer-events-none"
       />
 
-      {/* Soft centered radial vignette matching talesthatshaped.me for effortless text legibility */}
+      {/* Soft centered radial vignette for effortless text legibility while keeping side animations vivid */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: `radial-gradient(ellipse 640px 800px at center, rgba(0, 0, 0, ${radialScrimOpacity}) 0%, rgba(0, 0, 0, ${
-            radialScrimOpacity * 0.56
-          }) 42%, rgba(0, 0, 0, 0.22) 100%)`,
+          background: `radial-gradient(ellipse 560px 760px at center, rgba(0, 0, 0, ${radialScrimOpacity}) 0%, rgba(0, 0, 0, ${
+            radialScrimOpacity * 0.48
+          }) 44%, rgba(0, 0, 0, 0.14) 100%)`,
         }}
       />
     </div>

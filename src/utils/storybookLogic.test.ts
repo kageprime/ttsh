@@ -21,7 +21,16 @@ import {
   computeTextDrivenShaderTargets,
   lerpShaderState,
   buildChapterNarrationBlocks,
+  getChapterTransitionDirection,
+  getChapterVisualSpec,
 } from './storybookLogic.ts';
+
+test('getChapterTransitionDirection computes +1 forward and -1 backward for page transitions', () => {
+  assert.equal(getChapterTransitionDirection(0, 1), 1);
+  assert.equal(getChapterTransitionDirection(2, 5), 1);
+  assert.equal(getChapterTransitionDirection(3, 3), 1);
+  assert.equal(getChapterTransitionDirection(4, 2), -1);
+});
 
 test('clampChapterIndex keeps index within valid chapter bounds', () => {
   assert.equal(clampChapterIndex(-3, 12), 0);
@@ -238,4 +247,97 @@ test('buildChapterNarrationBlocks sequences sound cues, Hebrew quotes, and paced
   assert.equal(blocks[2].paragraphIndex, 0);
   assert.equal(blocks[3].kind, 'paragraph');
   assert.equal(blocks[3].paragraphIndex, 1);
+
+  // Verify single-speaker voice consistency and brisk natural AI voice speed across all spoken blocks
+  assert.equal(blocks[1].speechRate, blocks[2].speechRate);
+  assert.equal(blocks[1].speechPitch, blocks[2].speechPitch);
+  assert.equal(blocks[1].neuralPlaybackRate, blocks[2].neuralPlaybackRate);
+  assert.ok(blocks[2].neuralPlaybackRate >= 1.1);
 });
+
+test('getChapterVisualSpec assigns a unique animated motif and background palette to every chapter in every episode', () => {
+  const episodeChapterCounts: Array<[string, number]> = [
+    ['e1-before-the-beginning', 12],
+    ['e2-the-garden-and-the-voice', 9],
+    ['e3-the-ark-and-the-olive-leaf', 3],
+    ['e4-stars-over-the-desert', 2],
+  ];
+
+  const seenMotifs = new Set<string>();
+
+  for (const [epId, count] of episodeChapterCounts) {
+    for (let ch = 1; ch <= count; ch++) {
+      const spec = getChapterVisualSpec(epId, ch);
+      assert.ok(
+        !seenMotifs.has(spec.motif),
+        `Expected unique motif for ${epId}:${ch}, got duplicate ${spec.motif}`
+      );
+      seenMotifs.add(spec.motif);
+      assert.equal(spec.tintTop.length, 3);
+      assert.equal(spec.tintHorizon.length, 3);
+      assert.equal(spec.tintGround.length, 3);
+    }
+  }
+
+  // Verify specific narrative constructions requested by user (Eden construction, Serpent, Flaming Sword, Dove)
+  assert.equal(
+    getChapterVisualSpec('e2-the-garden-and-the-voice', 1).motif,
+    'e2-ch1-construct-eden'
+  );
+  assert.equal(
+    getChapterVisualSpec('e2-the-garden-and-the-voice', 2).motif,
+    'e2-ch2-two-trees'
+  );
+  assert.equal(
+    getChapterVisualSpec('e2-the-garden-and-the-voice', 3).motif,
+    'e2-ch3-coiling-serpent'
+  );
+  assert.equal(
+    getChapterVisualSpec('e2-the-garden-and-the-voice', 7).motif,
+    'e2-ch7-flaming-sword'
+  );
+  assert.equal(
+    getChapterVisualSpec('e3-the-ark-and-the-olive-leaf', 3).motif,
+    'e3-ch3-dove-olive-rainbow'
+  );
+});
+
+test('BIBLE_EPISODES includes animationConfig on every chapter and computeTextDrivenShaderTargets renders it', async () => {
+  const { BIBLE_EPISODES } = await import('../data/stories.ts');
+  const seenMotifs = new Set<string>();
+
+  for (const ep of BIBLE_EPISODES) {
+    assert.ok(ep.chapters.length > 0);
+    for (const ch of ep.chapters) {
+      assert.ok(
+        ch.animationConfig,
+        `Missing animationConfig on ${ep.id} chapter ${ch.number}`
+      );
+      assert.ok(ch.animationConfig.motif.length > 0);
+      assert.ok(ch.animationConfig.label.length > 0);
+      assert.ok(ch.animationConfig.description.length > 0);
+      assert.equal(ch.animationConfig.tintTop.length, 3);
+      assert.equal(ch.animationConfig.tintHorizon.length, 3);
+      assert.equal(ch.animationConfig.tintGround.length, 3);
+      assert.ok(
+        !seenMotifs.has(ch.animationConfig.motif),
+        `Duplicate chapter animation motif: ${ch.animationConfig.motif}`
+      );
+      seenMotifs.add(ch.animationConfig.motif);
+
+      const shaderState = computeTextDrivenShaderTargets(
+        ch.sceneTheme,
+        ch.canvasMode,
+        ch.narrative,
+        false,
+        ep.id,
+        ch.number,
+        ch.animationConfig
+      );
+      assert.equal(shaderState.motif, ch.animationConfig.motif);
+      assert.equal(shaderState.motifLabel, ch.animationConfig.label);
+    }
+  }
+});
+
+

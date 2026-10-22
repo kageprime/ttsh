@@ -434,11 +434,439 @@ export function getCanvasPalette(mode: CanvasSimulationMode): CanvasPalette {
 // TEXT-DRIVEN SEAMLESS WEBGL SHADER STATE & INTERPOLATION
 // ============================================================================
 
+export type ChapterVisualMotif =
+  | 'hero-sanctuary'
+  // Episode 1: Before the Beginning (12 Chapters)
+  | 'e1-ch1-abyssal-resonance'
+  | 'e1-ch2-bereshit-arch'
+  | 'e1-ch3-tohu-vortex'
+  | 'e1-ch4-hovering-ruach'
+  | 'e1-ch5-yehi-or-burst'
+  | 'e1-ch6-sky-and-shoals'
+  | 'e1-ch7-imago-dei-grove'
+  | 'e1-ch8-sacred-dust-breath'
+  | 'e1-ch9-sabbath-sanctuary'
+  | 'e1-ch10-symphony-nebula'
+  | 'e1-ch11-dawn-over-depths'
+  | 'e1-ch12-forest-of-grace'
+  // Episode 2: The Garden and the Voice (9 Chapters)
+  | 'e2-ch1-construct-eden'
+  | 'e2-ch2-two-trees'
+  | 'e2-ch3-coiling-serpent'
+  | 'e2-ch4-fig-leaves-fall'
+  | 'e2-ch5-ayekah-footsteps'
+  | 'e2-ch6-promised-seed'
+  | 'e2-ch7-flaming-sword'
+  | 'e2-ch8-healing-river'
+  | 'e2-ch9-east-of-eden-grace'
+  // Episode 3: The Deep Unbound (3 Chapters)
+  | 'e3-ch1-deluge-ark'
+  | 'e3-ch2-receding-wind-ark'
+  | 'e3-ch3-dove-olive-rainbow'
+  // Episode 4: Stars Over the Tent (2 Chapters)
+  | 'e4-ch1-pilgrim-tent-fire'
+  | 'e4-ch2-counted-stars';
+
 export interface ShaderSceneWeights {
   readonly ocean: number;
   readonly dawn: number;
   readonly forest: number;
   readonly cosmos: number;
+}
+
+export interface ChapterVisualSpec {
+  readonly motif: ChapterVisualMotif;
+  readonly label: string;
+  readonly description?: string;
+  readonly tintTop: readonly [number, number, number];
+  readonly tintHorizon: readonly [number, number, number];
+  readonly tintGround: readonly [number, number, number];
+  readonly weights: ShaderSceneWeights;
+  readonly windIntensity: number;
+  readonly lightBloom: number;
+  readonly waterParting: number;
+  readonly accentGlow?: string;
+}
+
+const CHAPTER_VISUAL_SPECS: Record<string, ChapterVisualSpec> = {
+  // EPISODE 1: BEFORE THE BEGINNING (12 distinct chapters)
+  'e1-before-the-beginning:1': {
+    motif: 'e1-ch1-abyssal-resonance',
+    label: 'The Abyssal Seashell Resonance',
+    tintTop: [0.02, 0.03, 0.08],
+    tintHorizon: [0.16, 0.22, 0.38],
+    tintGround: [0.02, 0.04, 0.10],
+    weights: { ocean: 0.92, dawn: 0.0, forest: 0.0, cosmos: 0.08 },
+    windIntensity: 0.18,
+    lightBloom: 0.16,
+    waterParting: 0.0,
+  },
+  'e1-before-the-beginning:2': {
+    motif: 'e1-ch2-bereshit-arch',
+    label: 'The Open House of Bereshit (ב)',
+    tintTop: [0.04, 0.03, 0.12],
+    tintHorizon: [0.28, 0.22, 0.48],
+    tintGround: [0.04, 0.05, 0.14],
+    weights: { ocean: 0.65, dawn: 0.05, forest: 0.0, cosmos: 0.30 },
+    windIntensity: 0.24,
+    lightBloom: 0.32,
+    waterParting: 0.10,
+  },
+  'e1-before-the-beginning:3': {
+    motif: 'e1-ch3-tohu-vortex',
+    label: 'Tohu va-Vohu — Yearning Deep Swells',
+    tintTop: [0.03, 0.06, 0.13],
+    tintHorizon: [0.22, 0.36, 0.48],
+    tintGround: [0.02, 0.08, 0.16],
+    weights: { ocean: 0.95, dawn: 0.0, forest: 0.0, cosmos: 0.05 },
+    windIntensity: 0.72,
+    lightBloom: 0.24,
+    waterParting: 0.15,
+  },
+  'e1-before-the-beginning:4': {
+    motif: 'e1-ch4-hovering-ruach',
+    label: 'Ruach Elohim — The Hovering Wings of Breath',
+    tintTop: [0.04, 0.09, 0.16],
+    tintHorizon: [0.36, 0.52, 0.62],
+    tintGround: [0.04, 0.12, 0.20],
+    weights: { ocean: 0.78, dawn: 0.22, forest: 0.0, cosmos: 0.0 },
+    windIntensity: 0.92,
+    lightBloom: 0.48,
+    waterParting: 0.45,
+  },
+  'e1-before-the-beginning:5': {
+    motif: 'e1-ch5-yehi-or-burst',
+    label: 'Yehi Or — Firstborn Dawn Prism',
+    tintTop: [0.08, 0.05, 0.14],
+    tintHorizon: [0.95, 0.68, 0.26],
+    tintGround: [0.32, 0.20, 0.08],
+    weights: { ocean: 0.15, dawn: 0.85, forest: 0.0, cosmos: 0.0 },
+    windIntensity: 0.30,
+    lightBloom: 0.95,
+    waterParting: 0.35,
+  },
+  'e1-before-the-beginning:6': {
+    motif: 'e1-ch6-sky-and-shoals',
+    label: 'Parted Firmament, Soaring Birds & Living Shoals',
+    tintTop: [0.05, 0.14, 0.24],
+    tintHorizon: [0.34, 0.68, 0.72],
+    tintGround: [0.03, 0.22, 0.26],
+    weights: { ocean: 0.62, dawn: 0.20, forest: 0.18, cosmos: 0.0 },
+    windIntensity: 0.55,
+    lightBloom: 0.62,
+    waterParting: 0.92,
+  },
+  'e1-before-the-beginning:7': {
+    motif: 'e1-ch7-imago-dei-grove',
+    label: 'Imago Dei — Ancient Grove & Living Reflection',
+    tintTop: [0.03, 0.09, 0.06],
+    tintHorizon: [0.46, 0.68, 0.48],
+    tintGround: [0.04, 0.16, 0.11],
+    weights: { ocean: 0.10, dawn: 0.20, forest: 0.70, cosmos: 0.0 },
+    windIntensity: 0.32,
+    lightBloom: 0.68,
+    waterParting: 0.20,
+  },
+  'e1-before-the-beginning:8': {
+    motif: 'e1-ch8-sacred-dust-breath',
+    label: 'Nishmat Chayim — Sacred Breath in Terracotta Dust',
+    tintTop: [0.09, 0.05, 0.09],
+    tintHorizon: [0.78, 0.46, 0.24],
+    tintGround: [0.24, 0.12, 0.07],
+    weights: { ocean: 0.0, dawn: 0.65, forest: 0.0, cosmos: 0.35 },
+    windIntensity: 0.48,
+    lightBloom: 0.75,
+    waterParting: 0.10,
+  },
+  'e1-before-the-beginning:9': {
+    motif: 'e1-ch9-sabbath-sanctuary',
+    label: 'Shabbat — The Sanctuary Palace in Time',
+    tintTop: [0.06, 0.04, 0.14],
+    tintHorizon: [0.74, 0.56, 0.36],
+    tintGround: [0.14, 0.10, 0.22],
+    weights: { ocean: 0.25, dawn: 0.55, forest: 0.0, cosmos: 0.20 },
+    windIntensity: 0.12,
+    lightBloom: 0.72,
+    waterParting: 0.05,
+  },
+  'e1-before-the-beginning:10': {
+    motif: 'e1-ch10-symphony-nebula',
+    label: 'Theological Overture — Cosmic Nebula & Harmonic Chords',
+    tintTop: [0.03, 0.02, 0.09],
+    tintHorizon: [0.48, 0.32, 0.66],
+    tintGround: [0.06, 0.05, 0.16],
+    weights: { ocean: 0.22, dawn: 0.08, forest: 0.0, cosmos: 0.70 },
+    windIntensity: 0.28,
+    lightBloom: 0.64,
+    waterParting: 0.25,
+  },
+  'e1-before-the-beginning:11': {
+    motif: 'e1-ch11-dawn-over-depths',
+    label: 'Or va-Tov — Sunrise Hovering Over the Deep',
+    tintTop: [0.05, 0.06, 0.14],
+    tintHorizon: [0.84, 0.58, 0.28],
+    tintGround: [0.06, 0.12, 0.22],
+    weights: { ocean: 0.52, dawn: 0.48, forest: 0.0, cosmos: 0.0 },
+    windIntensity: 0.36,
+    lightBloom: 0.82,
+    waterParting: 0.40,
+  },
+  'e1-before-the-beginning:12': {
+    motif: 'e1-ch12-forest-of-grace',
+    label: 'Chen va-Shalom — Lantern Walk Through the Forests of Scripture',
+    tintTop: [0.02, 0.06, 0.07],
+    tintHorizon: [0.42, 0.58, 0.46],
+    tintGround: [0.03, 0.09, 0.07],
+    weights: { ocean: 0.12, dawn: 0.24, forest: 0.44, cosmos: 0.20 },
+    windIntensity: 0.16,
+    lightBloom: 0.58,
+    waterParting: 0.10,
+  },
+
+  // EPISODE 2: THE GARDEN AND THE VOICE (9 distinct chapters)
+  'e2-the-garden-and-the-voice:1': {
+    motif: 'e2-ch1-construct-eden',
+    label: 'Gan be-Eden — Constructing the Garden & Four Rivers',
+    tintTop: [0.02, 0.08, 0.05],
+    tintHorizon: [0.38, 0.72, 0.52],
+    tintGround: [0.04, 0.18, 0.12],
+    weights: { ocean: 0.12, dawn: 0.18, forest: 0.70, cosmos: 0.0 },
+    windIntensity: 0.28,
+    lightBloom: 0.65,
+    waterParting: 0.25,
+  },
+  'e2-the-garden-and-the-voice:2': {
+    motif: 'e2-ch2-two-trees',
+    label: 'Etz ha-Chayim — The Tree of Life & The First Boundary',
+    tintTop: [0.04, 0.08, 0.05],
+    tintHorizon: [0.76, 0.64, 0.32],
+    tintGround: [0.06, 0.15, 0.09],
+    weights: { ocean: 0.05, dawn: 0.35, forest: 0.60, cosmos: 0.0 },
+    windIntensity: 0.22,
+    lightBloom: 0.78,
+    waterParting: 0.15,
+  },
+  'e2-the-garden-and-the-voice:3': {
+    motif: 'e2-ch3-coiling-serpent',
+    label: 'Arum — The Coiling Serpent on the Shadowed Bough',
+    tintTop: [0.02, 0.04, 0.04],
+    tintHorizon: [0.24, 0.38, 0.26],
+    tintGround: [0.03, 0.07, 0.05],
+    weights: { ocean: 0.25, dawn: 0.05, forest: 0.60, cosmos: 0.10 },
+    windIntensity: 0.42,
+    lightBloom: 0.28,
+    waterParting: 0.05,
+  },
+  'e2-the-garden-and-the-voice:4': {
+    motif: 'e2-ch4-fig-leaves-fall',
+    label: 'Eirummim — Fractured Light & Drifting Fig Leaves',
+    tintTop: [0.04, 0.05, 0.07],
+    tintHorizon: [0.28, 0.32, 0.30],
+    tintGround: [0.05, 0.07, 0.06],
+    weights: { ocean: 0.20, dawn: 0.12, forest: 0.52, cosmos: 0.16 },
+    windIntensity: 0.35,
+    lightBloom: 0.22,
+    waterParting: 0.0,
+  },
+  'e2-the-garden-and-the-voice:5': {
+    motif: 'e2-ch5-ayekah-footsteps',
+    label: 'Ayekah — Seeking Footsteps in the Cool of the Day',
+    tintTop: [0.03, 0.06, 0.11],
+    tintHorizon: [0.36, 0.48, 0.58],
+    tintGround: [0.04, 0.10, 0.12],
+    weights: { ocean: 0.38, dawn: 0.14, forest: 0.48, cosmos: 0.0 },
+    windIntensity: 0.68,
+    lightBloom: 0.44,
+    waterParting: 0.55,
+  },
+  'e2-the-garden-and-the-voice:6': {
+    motif: 'e2-ch6-promised-seed',
+    label: 'Zera — The Crushed Serpent & The Promised Seed in the Ruins',
+    tintTop: [0.06, 0.04, 0.08],
+    tintHorizon: [0.72, 0.48, 0.24],
+    tintGround: [0.12, 0.08, 0.06],
+    weights: { ocean: 0.10, dawn: 0.58, forest: 0.22, cosmos: 0.10 },
+    windIntensity: 0.46,
+    lightBloom: 0.72,
+    waterParting: 0.20,
+  },
+  'e2-the-garden-and-the-voice:7': {
+    motif: 'e2-ch7-flaming-sword',
+    label: 'Kotnot Or — Cherubim & The Flaming Sword East of Eden',
+    tintTop: [0.07, 0.03, 0.06],
+    tintHorizon: [0.85, 0.42, 0.20],
+    tintGround: [0.16, 0.07, 0.06],
+    weights: { ocean: 0.30, dawn: 0.50, forest: 0.10, cosmos: 0.10 },
+    windIntensity: 0.58,
+    lightBloom: 0.80,
+    waterParting: 0.65,
+  },
+  'e2-the-garden-and-the-voice:8': {
+    motif: 'e2-ch8-healing-river',
+    label: 'Refuah — The River of Life & Leaves for the Healing of Nations',
+    tintTop: [0.02, 0.07, 0.06],
+    tintHorizon: [0.46, 0.74, 0.56],
+    tintGround: [0.04, 0.18, 0.14],
+    weights: { ocean: 0.28, dawn: 0.22, forest: 0.50, cosmos: 0.0 },
+    windIntensity: 0.30,
+    lightBloom: 0.74,
+    waterParting: 0.35,
+  },
+  'e2-the-garden-and-the-voice:9': {
+    motif: 'e2-ch9-east-of-eden-grace',
+    label: 'Ruach ha-Yom — Still Loved East of Eden',
+    tintTop: [0.05, 0.04, 0.11],
+    tintHorizon: [0.68, 0.52, 0.34],
+    tintGround: [0.10, 0.09, 0.14],
+    weights: { ocean: 0.20, dawn: 0.52, forest: 0.14, cosmos: 0.14 },
+    windIntensity: 0.22,
+    lightBloom: 0.68,
+    waterParting: 0.15,
+  },
+
+  // EPISODE 3: THE DEEP UNBOUND (3 distinct chapters)
+  'e3-the-ark-and-the-olive-leaf:1': {
+    motif: 'e3-ch1-deluge-ark',
+    label: 'Chen — The Gathering Deluge & The Floating Ark Sanctuary',
+    tintTop: [0.02, 0.04, 0.08],
+    tintHorizon: [0.24, 0.34, 0.46],
+    tintGround: [0.02, 0.06, 0.12],
+    weights: { ocean: 0.90, dawn: 0.10, forest: 0.0, cosmos: 0.0 },
+    windIntensity: 0.88,
+    lightBloom: 0.30,
+    waterParting: 0.55,
+  },
+  'e3-the-ark-and-the-olive-leaf:2': {
+    motif: 'e3-ch2-receding-wind-ark',
+    label: 'Vayizkor Elohim — Receding Wind & Emergent Peaks of Ararat',
+    tintTop: [0.03, 0.07, 0.14],
+    tintHorizon: [0.42, 0.56, 0.68],
+    tintGround: [0.03, 0.10, 0.18],
+    weights: { ocean: 0.75, dawn: 0.25, forest: 0.0, cosmos: 0.0 },
+    windIntensity: 0.76,
+    lightBloom: 0.54,
+    waterParting: 0.78,
+  },
+  'e3-the-ark-and-the-olive-leaf:3': {
+    motif: 'e3-ch3-dove-olive-rainbow',
+    label: 'Qeshet be-Anan — The Returning Dove with Olive Leaf & Covenant Bow',
+    tintTop: [0.06, 0.08, 0.16],
+    tintHorizon: [0.88, 0.66, 0.36],
+    tintGround: [0.12, 0.20, 0.24],
+    weights: { ocean: 0.28, dawn: 0.62, forest: 0.10, cosmos: 0.0 },
+    windIntensity: 0.26,
+    lightBloom: 0.88,
+    waterParting: 0.45,
+  },
+
+  // EPISODE 4: STARS OVER THE TENT (2 distinct chapters)
+  'e4-stars-over-the-desert:1': {
+    motif: 'e4-ch1-pilgrim-tent-fire',
+    label: 'Lekh-Lekha — Nomad Tent & Pilgrim Campfire on the Dunes',
+    tintTop: [0.06, 0.04, 0.09],
+    tintHorizon: [0.76, 0.46, 0.22],
+    tintGround: [0.22, 0.12, 0.07],
+    weights: { ocean: 0.0, dawn: 0.55, forest: 0.0, cosmos: 0.45 },
+    windIntensity: 0.38,
+    lightBloom: 0.66,
+    waterParting: 0.10,
+  },
+  'e4-stars-over-the-desert:2': {
+    motif: 'e4-ch2-counted-stars',
+    label: 'Ha-Kokhavim — Abraham Beneath the Cathedral of Constellations',
+    tintTop: [0.02, 0.02, 0.07],
+    tintHorizon: [0.38, 0.28, 0.56],
+    tintGround: [0.08, 0.06, 0.12],
+    weights: { ocean: 0.05, dawn: 0.05, forest: 0.0, cosmos: 0.90 },
+    windIntensity: 0.24,
+    lightBloom: 0.72,
+    waterParting: 0.15,
+  },
+};
+
+export function getChapterVisualSpec(
+  episodeId?: string,
+  chapterNumber?: number,
+  fallbackTheme = 'primordial-waters',
+  fallbackMode?: CanvasSimulationMode,
+  chapterAnimationConfig?: ChapterVisualSpec
+): ChapterVisualSpec {
+  if (chapterAnimationConfig) {
+    return chapterAnimationConfig;
+  }
+  if (episodeId && typeof chapterNumber === 'number') {
+    const key = `${episodeId}:${chapterNumber}`;
+    if (CHAPTER_VISUAL_SPECS[key]) {
+      return CHAPTER_VISUAL_SPECS[key];
+    }
+  }
+
+  // Fallback for Home Hero or generic theme preview
+  if (
+    fallbackTheme === 'hero-waterfall' ||
+    fallbackTheme === 'ancient-forest' ||
+    fallbackTheme === 'eden-mist' ||
+    fallbackMode === 'emerald-spores' ||
+    fallbackMode === 'meadow-fireflies'
+  ) {
+    return {
+      motif: 'hero-sanctuary',
+      label: 'Sanctuary Waterfall & Emerald Mist',
+      tintTop: [0.025, 0.065, 0.045],
+      tintHorizon: [0.45, 0.68, 0.56],
+      tintGround: [0.04, 0.14, 0.10],
+      weights: { ocean: 0.0, dawn: 0.0, forest: 1.0, cosmos: 0.0 },
+      windIntensity: 0.28,
+      lightBloom: 0.42,
+      waterParting: 0.15,
+    };
+  }
+  if (
+    fallbackTheme === 'first-light' ||
+    fallbackTheme === 'sabbath-stillness' ||
+    fallbackMode === 'yehi-or-dawn' ||
+    fallbackMode === 'sabbath-breath'
+  ) {
+    return {
+      motif: 'e1-ch5-yehi-or-burst',
+      label: 'First Light Dawn',
+      tintTop: [0.05, 0.04, 0.09],
+      tintHorizon: [0.85, 0.60, 0.26],
+      tintGround: [0.24, 0.16, 0.08],
+      weights: { ocean: 0.15, dawn: 0.85, forest: 0.0, cosmos: 0.0 },
+      windIntensity: 0.25,
+      lightBloom: 0.78,
+      waterParting: 0.20,
+    };
+  }
+  if (
+    fallbackTheme === 'celestial-spheres' ||
+    fallbackTheme === 'desert-stars' ||
+    fallbackMode === 'star-constellations'
+  ) {
+    return {
+      motif: 'e4-ch2-counted-stars',
+      label: 'Celestial Constellations',
+      tintTop: [0.02, 0.025, 0.06],
+      tintHorizon: [0.38, 0.26, 0.48],
+      tintGround: [0.09, 0.07, 0.10],
+      weights: { ocean: 0.10, dawn: 0.0, forest: 0.0, cosmos: 0.90 },
+      windIntensity: 0.25,
+      lightBloom: 0.48,
+      waterParting: 0.10,
+    };
+  }
+  return {
+    motif: 'e1-ch1-abyssal-resonance',
+    label: 'Primordial Waters',
+    tintTop: [0.025, 0.04, 0.085],
+    tintHorizon: [0.26, 0.35, 0.45],
+    tintGround: [0.02, 0.05, 0.10],
+    weights: { ocean: 1.0, dawn: 0.0, forest: 0.0, cosmos: 0.0 },
+    windIntensity: 0.30,
+    lightBloom: 0.25,
+    waterParting: 0.10,
+  };
 }
 
 export interface TextDrivenShaderState {
@@ -447,6 +875,11 @@ export interface TextDrivenShaderState {
   readonly lightBloom: number;
   readonly waterParting: number;
   readonly subMode: number;
+  readonly tintTop: readonly [number, number, number];
+  readonly tintHorizon: readonly [number, number, number];
+  readonly tintGround: readonly [number, number, number];
+  readonly motif: ChapterVisualMotif;
+  readonly motifLabel: string;
 }
 
 export function normalizeSceneWeights(w: ShaderSceneWeights): ShaderSceneWeights {
@@ -467,76 +900,43 @@ export function normalizeSceneWeights(w: ShaderSceneWeights): ShaderSceneWeights
 }
 
 /**
- * Pure function that ties the real-time WebGL shader parameters directly to both
- * the chapter theme/mode AND the live narrative text or sound cue being read/spoken.
+ * Pure function that ties the real-time WebGL shader parameters directly to:
+ * 1. The chapter's animationConfig from the StoryEpisode data structure (or episodeId + chapterNumber fallback)
+ * 2. The live narrative text or sound cue being read/spoken.
  */
 export function computeTextDrivenShaderTargets(
   theme: string,
   canvasMode?: CanvasSimulationMode,
   activeText = '',
-  isSoundCueActive = false
+  isSoundCueActive = false,
+  episodeId?: string,
+  chapterNumber?: number,
+  chapterAnimationConfig?: ChapterVisualSpec
 ): TextDrivenShaderState {
-  let ocean = 0.0;
-  let dawn = 0.0;
-  let forest = 0.0;
-  let cosmos = 0.0;
+  const spec = getChapterVisualSpec(
+    episodeId,
+    chapterNumber,
+    theme,
+    canvasMode,
+    chapterAnimationConfig
+  );
 
-  let windIntensity = 0.25;
-  let lightBloom = 0.2;
-  let waterParting = 0.0;
-  let subMode = 0.0;
+  let ocean = spec.weights.ocean;
+  let dawn = spec.weights.dawn;
+  let forest = spec.weights.forest;
+  let cosmos = spec.weights.cosmos;
 
-  // 1. Base scene weights from chapter theme / simulation mode
-  if (
-    theme === 'hero-waterfall' ||
-    theme === 'ancient-forest' ||
-    theme === 'eden-mist' ||
-    canvasMode === 'emerald-spores' ||
-    canvasMode === 'meadow-fireflies'
-  ) {
-    forest = 1.0;
-    lightBloom = 0.35;
-  } else if (
-    theme === 'first-light' ||
-    theme === 'sabbath-stillness' ||
-    canvasMode === 'yehi-or-dawn' ||
-    canvasMode === 'sabbath-breath'
-  ) {
-    dawn = 0.85;
-    ocean = 0.15;
-    lightBloom = 0.78;
-  } else if (
-    theme === 'celestial-spheres' ||
-    theme === 'desert-stars' ||
-    canvasMode === 'star-constellations' ||
-    canvasMode === 'symphony-aurora'
-  ) {
-    cosmos = 0.9;
-    ocean = 0.1;
-    lightBloom = 0.45;
-  } else if (theme === 'sacred-breath' || canvasMode === 'sacred-dust') {
-    dawn = 0.65;
-    cosmos = 0.35;
-    lightBloom = 0.55;
-    subMode = 1.0;
-  } else if (theme === 'parted-sky' || canvasMode === 'sky-vault') {
-    ocean = 0.72;
-    dawn = 0.28;
-    waterParting = 0.75;
-    windIntensity = 0.55;
-  } else {
-    // Primordial waters, living waters, deluge ark, tectonic sea
-    ocean = 1.0;
-    if (canvasMode === 'ruach-wind') {
-      windIntensity = 0.85;
-      subMode = 1.0;
-    } else if (theme === 'living-waters' || canvasMode === 'living-shoals') {
-      subMode = 2.0;
-      lightBloom = 0.4;
-    }
-  }
+  let windIntensity = spec.windIntensity;
+  let lightBloom = spec.lightBloom;
+  let waterParting = spec.waterParting;
+  let subMode =
+    theme === 'living-waters' || canvasMode === 'living-shoals'
+      ? 2.0
+      : canvasMode === 'ruach-wind' || theme === 'sacred-breath'
+        ? 1.0
+        : 0.0;
 
-  // 2. Semantic modulation from the live narrative text or active sound cue
+  // Semantic modulation from the live narrative text or active sound cue
   const lower = activeText.toLowerCase();
   if (lower.length > 0) {
     if (
@@ -544,53 +944,50 @@ export function computeTextDrivenShaderTargets(
         lower
       )
     ) {
-      ocean += 0.45;
+      ocean += 0.28;
     }
     if (
-      /\b(wind|ruach|breath|breathing|hovering|hovered|storm|tempest|fluttering|moving over)\b/.test(
+      /\b(wind|ruach|breath|breathing|hovering|hovered|storm|tempest|fluttering|moving over|breeze|cool of the day)\b/.test(
         lower
       )
     ) {
-      windIntensity = Math.min(1.0, windIntensity + 0.48);
+      windIntensity = Math.min(1.0, windIntensity + 0.38);
       subMode = 1.0;
-      ocean += 0.25;
     }
     if (
-      /\b(light|yehi or|dawn|morning|sun|shone|glow|golden|tov|good|blessed|sabbath|radiance)\b/.test(
+      /\b(light|yehi or|dawn|morning|sun|shone|glow|golden|tov|good|blessed|sabbath|radiance|flaming|fire)\b/.test(
         lower
       )
     ) {
-      dawn += 0.52;
-      lightBloom = Math.min(1.0, lightBloom + 0.48);
+      dawn += 0.32;
+      lightBloom = Math.min(1.0, lightBloom + 0.35);
     }
     if (
-      /\b(sky|firmament|vault|horizon|parted|separated|above|below|clouds|mist)\b/.test(
+      /\b(sky|firmament|vault|horizon|parted|separated|above|below|clouds|mist|bow|rainbow)\b/.test(
         lower
       )
     ) {
-      waterParting = Math.min(1.0, waterParting + 0.58);
-      ocean += 0.2;
-      dawn += 0.15;
+      waterParting = Math.min(1.0, waterParting + 0.42);
     }
     if (
-      /\b(forest|trees|tree|garden|eden|green|seed|fruit|leaves|branches|earth|land|meadow|living)\b/.test(
+      /\b(forest|trees|tree|garden|eden|green|seed|fruit|leaves|branches|earth|land|meadow|living|serpent|fig|olive)\b/.test(
         lower
       )
     ) {
-      forest += 0.52;
+      forest += 0.32;
     }
     if (
       /\b(stars|star|moon|heavens|galaxy|galaxies|universe|cosmos|night|darkness|tent|dust)\b/.test(
         lower
       )
     ) {
-      cosmos += 0.45;
+      cosmos += 0.32;
     }
   }
 
   if (isSoundCueActive) {
-    windIntensity = Math.min(1.0, windIntensity + 0.22);
-    lightBloom = Math.min(1.0, lightBloom + 0.18);
+    windIntensity = Math.min(1.0, windIntensity + 0.2);
+    lightBloom = Math.min(1.0, lightBloom + 0.16);
   }
 
   return {
@@ -599,12 +996,17 @@ export function computeTextDrivenShaderTargets(
     lightBloom: Math.max(0.05, Math.min(1.0, lightBloom)),
     waterParting: Math.max(0.0, Math.min(1.0, waterParting)),
     subMode,
+    tintTop: spec.tintTop,
+    tintHorizon: spec.tintHorizon,
+    tintGround: spec.tintGround,
+    motif: spec.motif,
+    motifLabel: spec.label,
   };
 }
 
 /**
  * Smoothly interpolates between two TextDrivenShaderState snapshots so WebGL transitions
- * are always gradual and seamless rather than abrupt.
+ * and per-chapter color palettes are always gradual and seamless rather than abrupt.
  */
 export function lerpShaderState(
   current: TextDrivenShaderState,
@@ -613,6 +1015,14 @@ export function lerpShaderState(
 ): TextDrivenShaderState {
   const t = Math.max(0, Math.min(1, alpha));
   const lerp = (a: number, b: number) => a + (b - a) * t;
+  const lerpVec3 = (
+    a: readonly [number, number, number],
+    b: readonly [number, number, number]
+  ): readonly [number, number, number] => [
+    lerp(a[0], b[0]),
+    lerp(a[1], b[1]),
+    lerp(a[2], b[2]),
+  ];
 
   const rawWeights: ShaderSceneWeights = {
     ocean: lerp(current.weights.ocean, target.weights.ocean),
@@ -627,6 +1037,11 @@ export function lerpShaderState(
     lightBloom: lerp(current.lightBloom, target.lightBloom),
     waterParting: lerp(current.waterParting, target.waterParting),
     subMode: lerp(current.subMode, target.subMode),
+    tintTop: lerpVec3(current.tintTop, target.tintTop),
+    tintHorizon: lerpVec3(current.tintHorizon, target.tintHorizon),
+    tintGround: lerpVec3(current.tintGround, target.tintGround),
+    motif: target.motif,
+    motifLabel: target.motifLabel,
   };
 }
 
@@ -648,6 +1063,7 @@ export interface NarrationBlock {
   readonly estimatedDurationMs: number;
   readonly speechRate: number;
   readonly speechPitch: number;
+  readonly neuralPlaybackRate: number;
 }
 
 export interface NarratableChapter {
@@ -660,41 +1076,59 @@ export interface NarratableChapter {
 }
 
 /**
- * Formats narrative text for unhurried, resonant storytelling delivery with natural pauses.
+ * Computes the horizontal/vertical transition direction (+1 forward, -1 backward)
+ * when navigating between chapters or episodes in EpisodeReaderView.
+ */
+export function getChapterTransitionDirection(
+  previousIndex: number,
+  nextIndex: number
+): 1 | -1 {
+  return nextIndex >= previousIndex ? 1 : -1;
+}
+
+/**
+ * Formats narrative text for clean, natural, single-speaker storytelling delivery
+ * without injecting artificial multi-second ellipsis stalls.
  */
 export function formatSpokenTextForPacing(rawText: string): string {
   return rawText
-    .replace(/\s*—\s*/g, ' ... ')
-    .replace(/\.{3,}/g, ' ... ')
+    .replace(/\s*—\s*/g, ', ')
+    .replace(/\.{3,}/g, '. ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
 /**
- * Estimates spoken duration in milliseconds for Morgan Freeman's unhurried ~112 WPM cadence,
- * accounting for dramatic punctuation pauses (`...`, `—`, `.`, `?`, `!`).
+ * Estimates spoken duration in milliseconds for natural, brisk ~150 WPM narration cadence.
  */
-export function estimateSpokenDurationMs(text: string, prePauseMs = 0, postPauseMs = 0): number {
+export function estimateSpokenDurationMs(
+  text: string,
+  prePauseMs = 0,
+  postPauseMs = 0
+): number {
   const trimmed = text.trim();
   if (!trimmed) return prePauseMs + postPauseMs;
 
   const words = trimmed.split(/\s+/).filter(Boolean).length;
-  const ellipsisCount = (trimmed.match(/\.{3}|—/g) || []).length;
   const sentenceEndCount = (trimmed.match(/[.!?](?!\.)/g) || []).length;
   const commaCount = (trimmed.match(/[,;:]/g) || []).length;
 
-  const wordTimeMs = words * 490; // ~122 WPM base speech + pauses = ~110 effective WPM
-  const pauseTimeMs =
-    ellipsisCount * 620 + sentenceEndCount * 420 + commaCount * 220;
+  const wordTimeMs = words * 340; // ~175 WPM base speech + punctuation = ~150 effective WPM
+  const pauseTimeMs = sentenceEndCount * 240 + commaCount * 110;
 
-  return Math.max(1800, prePauseMs + wordTimeMs + pauseTimeMs + postPauseMs);
+  return Math.max(1400, prePauseMs + wordTimeMs + pauseTimeMs + postPauseMs);
 }
+
+// Single consistent speaker voice parameters across all blocks so the narrator never sounds like two different speakers
+const UNIFIED_SPEECH_RATE = 1.02;
+const UNIFIED_SPEECH_PITCH = 0.82;
+const UNIFIED_NEURAL_PLAYBACK_RATE = 1.15;
 
 /**
  * Builds an ordered list of NarrationBlocks for a chapter that respects:
- * 1. Atmospheric [sound cues] (giving the soundscape 3.8s of dedicated breathing room before speech begins)
- * 2. Sacred Hebrew pull-quotes (slow, reverent delivery with pre/post contemplation pauses)
- * 3. Poetic narrative paragraphs (deep, unhurried cadence with natural sentence pauses)
+ * 1. Atmospheric [sound cues] (giving the soundscape dedicated breathing room before speech begins)
+ * 2. Sacred Hebrew pull-quotes (spoken by the same unified narrator at a natural, clear pace)
+ * 3. Poetic narrative paragraphs (spoken by the same unified narrator with brisk, engaging flow)
  */
 export function buildChapterNarrationBlocks(
   chapter: NarratableChapter
@@ -703,9 +1137,8 @@ export function buildChapterNarrationBlocks(
 
   if (chapter.soundCue && chapter.soundCue.trim().length > 0) {
     const cueText = chapter.soundCue.trim();
-    // Longer sound cues get slightly longer atmospheric immersion (3.6s - 4.5s)
     const cueWords = cueText.split(/\s+/).length;
-    const cueDuration = Math.min(4600, Math.max(3500, 2600 + cueWords * 75));
+    const cueDuration = Math.min(4200, Math.max(3500, 2500 + cueWords * 65));
     blocks.push({
       id: `ch-${chapter.number}-sound-cue`,
       chapterNumber: chapter.number,
@@ -713,20 +1146,21 @@ export function buildChapterNarrationBlocks(
       paragraphIndex: null,
       displayText: cueText,
       spokenText: '', // Pure acoustic sound cue — narrator lets the atmosphere speak first
-      prePauseMs: 300,
-      postPauseMs: 600,
+      prePauseMs: 180,
+      postPauseMs: 320,
       estimatedDurationMs: cueDuration,
-      speechRate: 0.8,
-      speechPitch: 0.72,
+      speechRate: UNIFIED_SPEECH_RATE,
+      speechPitch: UNIFIED_SPEECH_PITCH,
+      neuralPlaybackRate: UNIFIED_NEURAL_PLAYBACK_RATE,
     });
   }
 
   if (chapter.hebrewQuote && chapter.hebrewQuote.trim().length > 0) {
     const quote = chapter.hebrewQuote.trim();
     const translation = chapter.hebrewTranslation?.trim() || '';
-    const spoken = translation ? `${quote} ... ${translation}` : quote;
-    const prePauseMs = 700;
-    const postPauseMs = 1100;
+    const spoken = translation ? `${quote}. ${translation}` : quote;
+    const prePauseMs = 180;
+    const postPauseMs = 340;
     blocks.push({
       id: `ch-${chapter.number}-hebrew-quote`,
       chapterNumber: chapter.number,
@@ -737,8 +1171,9 @@ export function buildChapterNarrationBlocks(
       prePauseMs,
       postPauseMs,
       estimatedDurationMs: estimateSpokenDurationMs(spoken, prePauseMs, postPauseMs),
-      speechRate: 0.78,
-      speechPitch: 0.7,
+      speechRate: UNIFIED_SPEECH_RATE,
+      speechPitch: UNIFIED_SPEECH_PITCH,
+      neuralPlaybackRate: UNIFIED_NEURAL_PLAYBACK_RATE,
     });
   }
 
@@ -750,8 +1185,8 @@ export function buildChapterNarrationBlocks(
   paragraphs.forEach((para, idx) => {
     const cleanPara = para.trim();
     if (!cleanPara) return;
-    const prePauseMs = idx === 0 ? 450 : 350;
-    const postPauseMs = 950;
+    const prePauseMs = idx === 0 ? 160 : 140;
+    const postPauseMs = 320;
     const spoken = formatSpokenTextForPacing(cleanPara);
     blocks.push({
       id: `ch-${chapter.number}-para-${idx}`,
@@ -763,8 +1198,9 @@ export function buildChapterNarrationBlocks(
       prePauseMs,
       postPauseMs,
       estimatedDurationMs: estimateSpokenDurationMs(cleanPara, prePauseMs, postPauseMs),
-      speechRate: 0.84,
-      speechPitch: 0.72,
+      speechRate: UNIFIED_SPEECH_RATE,
+      speechPitch: UNIFIED_SPEECH_PITCH,
+      neuralPlaybackRate: UNIFIED_NEURAL_PLAYBACK_RATE,
     });
   });
 

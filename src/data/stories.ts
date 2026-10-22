@@ -25,6 +25,60 @@ export type CanvasSimulationMode =
   | 'symphony-aurora'
   | 'sabbath-breath';
 
+export type ChapterVisualMotif =
+  | 'hero-sanctuary'
+  // Episode 1: Before the Beginning (12 Chapters)
+  | 'e1-ch1-abyssal-resonance'
+  | 'e1-ch2-bereshit-arch'
+  | 'e1-ch3-tohu-vortex'
+  | 'e1-ch4-hovering-ruach'
+  | 'e1-ch5-yehi-or-burst'
+  | 'e1-ch6-sky-and-shoals'
+  | 'e1-ch7-imago-dei-grove'
+  | 'e1-ch8-sacred-dust-breath'
+  | 'e1-ch9-sabbath-sanctuary'
+  | 'e1-ch10-symphony-nebula'
+  | 'e1-ch11-dawn-over-depths'
+  | 'e1-ch12-forest-of-grace'
+  // Episode 2: The Garden and the Voice (9 Chapters)
+  | 'e2-ch1-construct-eden'
+  | 'e2-ch2-two-trees'
+  | 'e2-ch3-coiling-serpent'
+  | 'e2-ch4-fig-leaves-fall'
+  | 'e2-ch5-ayekah-footsteps'
+  | 'e2-ch6-promised-seed'
+  | 'e2-ch7-flaming-sword'
+  | 'e2-ch8-healing-river'
+  | 'e2-ch9-east-of-eden-grace'
+  // Episode 3: The Deep Unbound (3 Chapters)
+  | 'e3-ch1-deluge-ark'
+  | 'e3-ch2-receding-wind-ark'
+  | 'e3-ch3-dove-olive-rainbow'
+  // Episode 4: Stars Over the Tent (2 Chapters)
+  | 'e4-ch1-pilgrim-tent-fire'
+  | 'e4-ch2-counted-stars';
+
+export interface ShaderSceneWeights {
+  readonly ocean: number;
+  readonly dawn: number;
+  readonly forest: number;
+  readonly cosmos: number;
+}
+
+export interface ChapterAnimationConfig {
+  readonly motif: ChapterVisualMotif;
+  readonly label: string;
+  readonly description: string;
+  readonly tintTop: readonly [number, number, number];
+  readonly tintHorizon: readonly [number, number, number];
+  readonly tintGround: readonly [number, number, number];
+  readonly weights: ShaderSceneWeights;
+  readonly windIntensity: number;
+  readonly lightBloom: number;
+  readonly waterParting: number;
+  readonly accentGlow: string;
+}
+
 export interface HebrewLexiconEntry {
   hebrew: string;
   transliteration: string;
@@ -51,6 +105,8 @@ export interface StoryChapter {
   durationSec: number;
   sceneTheme: SceneTheme;
   canvasMode: CanvasSimulationMode;
+  backgroundImageUrl?: string;
+  animationConfig: ChapterAnimationConfig;
 }
 
 export interface StoryEpisode {
@@ -120,6 +176,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 48,
         sceneTheme: 'primordial-waters',
         canvasMode: 'void-ripples',
+        animationConfig: {
+          motif: 'e1-ch1-abyssal-resonance',
+          label: 'The Abyssal Seashell Resonance',
+          description:
+            'Concentric acoustic waves and bioluminescent depth filaments pulse across the waiting primordial waters.',
+          tintTop: [0.02, 0.03, 0.08],
+          tintHorizon: [0.16, 0.22, 0.38],
+          tintGround: [0.02, 0.04, 0.10],
+          weights: { ocean: 0.92, dawn: 0.0, forest: 0.0, cosmos: 0.08 },
+          windIntensity: 0.18,
+          lightBloom: 0.16,
+          waterParting: 0.0,
+          accentGlow: '#7FA8D8',
+        },
       },
       {
         number: 2,
@@ -153,6 +223,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 44,
         sceneTheme: 'primordial-waters',
         canvasMode: 'void-ripples',
+        animationConfig: {
+          motif: 'e1-ch2-bereshit-arch',
+          label: 'The Open House of Bereshit (ב)',
+          description:
+            'Luminous calligraphic geometry forms the three-walled sanctuary arch of the Hebrew letter Bet over the deep.',
+          tintTop: [0.04, 0.03, 0.12],
+          tintHorizon: [0.28, 0.22, 0.48],
+          tintGround: [0.04, 0.05, 0.14],
+          weights: { ocean: 0.65, dawn: 0.05, forest: 0.0, cosmos: 0.30 },
+          windIntensity: 0.24,
+          lightBloom: 0.32,
+          waterParting: 0.10,
+          accentGlow: '#B8A8E8',
+        },
       },
       {
         number: 3,
@@ -185,6 +269,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 50,
         sceneTheme: 'primordial-waters',
         canvasMode: 'tectonic-sea',
+        animationConfig: {
+          motif: 'e1-ch3-tohu-vortex',
+          label: 'Tohu va-Vohu — Yearning Deep Swells',
+          description:
+            'Untamed silver-indigo tidal currents and rising mist spirals swirl in an unshaped sea of potential.',
+          tintTop: [0.03, 0.06, 0.13],
+          tintHorizon: [0.22, 0.36, 0.48],
+          tintGround: [0.02, 0.08, 0.16],
+          weights: { ocean: 0.95, dawn: 0.0, forest: 0.0, cosmos: 0.05 },
+          windIntensity: 0.72,
+          lightBloom: 0.24,
+          waterParting: 0.15,
+          accentGlow: '#6BA3C8',
+        },
       },
       {
         number: 4,
@@ -218,6 +316,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 64,
         sceneTheme: 'primordial-waters',
         canvasMode: 'ruach-wind',
+        animationConfig: {
+          motif: 'e1-ch4-hovering-ruach',
+          label: 'Ruach Elohim — The Hovering Wings of Breath',
+          description:
+            'Sweeping wind ribbons and luminous wing-arcs brood gently just above the dark surface of the waters.',
+          tintTop: [0.04, 0.09, 0.16],
+          tintHorizon: [0.36, 0.52, 0.62],
+          tintGround: [0.04, 0.12, 0.20],
+          weights: { ocean: 0.78, dawn: 0.22, forest: 0.0, cosmos: 0.0 },
+          windIntensity: 0.92,
+          lightBloom: 0.48,
+          waterParting: 0.45,
+          accentGlow: '#93C5FD',
+        },
       },
       {
         number: 5,
@@ -254,13 +366,26 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 65,
         sceneTheme: 'first-light',
         canvasMode: 'yehi-or-dawn',
+        animationConfig: {
+          motif: 'e1-ch5-yehi-or-burst',
+          label: 'Yehi Or — Firstborn Dawn Prism',
+          description:
+            'Volumetric golden rays and expanding dawn halos break across the horizon, dividing night from morning.',
+          tintTop: [0.08, 0.05, 0.14],
+          tintHorizon: [0.95, 0.68, 0.26],
+          tintGround: [0.32, 0.20, 0.08],
+          weights: { ocean: 0.15, dawn: 0.85, forest: 0.0, cosmos: 0.0 },
+          windIntensity: 0.30,
+          lightBloom: 0.95,
+          waterParting: 0.35,
+          accentGlow: '#F5B942',
+        },
       },
       {
         number: 6,
         title: 'Separation and Saturation',
         scriptureRef: 'Genesis 1:6–25',
-        scriptureText:
-          'And God saw that it was good.',
+        scriptureText: 'And God saw that it was good.',
         soundCue: 'A slow, cosmic tide — waves of light and darkness breathing.',
         paragraphs: [
           'And so it unfolds — not as a lecture, but as a liturgy. A six-day poem of separation and saturation. Sky from waters. Land from seas. Vegetation reaching up from the soil. Sun, moon, stars — not as gods, as some ancient peoples believed — but as lamps. Timekeepers. Gifts.',
@@ -286,6 +411,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 62,
         sceneTheme: 'living-waters',
         canvasMode: 'living-shoals',
+        animationConfig: {
+          motif: 'e1-ch6-sky-and-shoals',
+          label: 'Parted Firmament, Soaring Birds & Living Shoals',
+          description:
+            'The upper cloud vault parts from the sea as winged birds soar overhead and bioluminescent shoals swim below.',
+          tintTop: [0.05, 0.14, 0.24],
+          tintHorizon: [0.34, 0.68, 0.72],
+          tintGround: [0.03, 0.22, 0.26],
+          weights: { ocean: 0.62, dawn: 0.20, forest: 0.18, cosmos: 0.0 },
+          windIntensity: 0.55,
+          lightBloom: 0.62,
+          waterParting: 0.92,
+          accentGlow: '#4FD1C5',
+        },
       },
       {
         number: 7,
@@ -318,6 +457,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 52,
         sceneTheme: 'ancient-forest',
         canvasMode: 'emerald-spores',
+        animationConfig: {
+          motif: 'e1-ch7-imago-dei-grove',
+          label: 'Imago Dei — Ancient Grove & Living Reflection',
+          description:
+            'Ancient forest canopies frame a tranquil mirror pool where a golden crown of light reflects upon the water.',
+          tintTop: [0.03, 0.09, 0.06],
+          tintHorizon: [0.46, 0.68, 0.48],
+          tintGround: [0.04, 0.16, 0.11],
+          weights: { ocean: 0.10, dawn: 0.20, forest: 0.70, cosmos: 0.0 },
+          windIntensity: 0.32,
+          lightBloom: 0.68,
+          waterParting: 0.20,
+          accentGlow: '#74C69D',
+        },
       },
       {
         number: 8,
@@ -350,13 +503,26 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 46,
         sceneTheme: 'sacred-breath',
         canvasMode: 'sacred-dust',
+        animationConfig: {
+          motif: 'e1-ch8-sacred-dust-breath',
+          label: 'Nishmat Chayim — Sacred Breath in Terracotta Dust',
+          description:
+            'Ascending streams of warm terracotta and gold dust spiral upward as divine breath animates the earth.',
+          tintTop: [0.09, 0.05, 0.09],
+          tintHorizon: [0.78, 0.46, 0.24],
+          tintGround: [0.24, 0.12, 0.07],
+          weights: { ocean: 0.0, dawn: 0.65, forest: 0.0, cosmos: 0.35 },
+          windIntensity: 0.48,
+          lightBloom: 0.75,
+          waterParting: 0.10,
+          accentGlow: '#E08E45',
+        },
       },
       {
         number: 9,
         title: 'A Sanctuary in Time',
         scriptureRef: 'Genesis 2:1–3',
-        scriptureText:
-          'And on the seventh day God rested from all his work.',
+        scriptureText: 'And on the seventh day God rested from all his work.',
         soundCue: 'A heartbeat emerges softly beneath the music.',
         paragraphs: [
           'And God rested. The seventh day — not because God was tired, but because rest is part of the pattern. A sanctuary in time. A reminder that being precedes doing. That the world is not a machine to run, but a gift to receive.',
@@ -381,6 +547,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 54,
         sceneTheme: 'sabbath-stillness',
         canvasMode: 'sabbath-breath',
+        animationConfig: {
+          motif: 'e1-ch9-sabbath-sanctuary',
+          label: 'Shabbat — The Sanctuary Palace in Time',
+          description:
+            'Seven luminous colonnade arches and a tranquil golden Sabbath menora glow above glass-still waters.',
+          tintTop: [0.06, 0.04, 0.14],
+          tintHorizon: [0.74, 0.56, 0.36],
+          tintGround: [0.14, 0.10, 0.22],
+          weights: { ocean: 0.25, dawn: 0.55, forest: 0.0, cosmos: 0.20 },
+          windIntensity: 0.12,
+          lightBloom: 0.72,
+          waterParting: 0.05,
+          accentGlow: '#E6C275',
+        },
       },
       {
         number: 10,
@@ -412,6 +592,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 60,
         sceneTheme: 'celestial-spheres',
         canvasMode: 'star-constellations',
+        animationConfig: {
+          motif: 'e1-ch10-symphony-nebula',
+          label: 'Theological Overture — Cosmic Nebula & Harmonic Chords',
+          description:
+            'Harmonic string waves and constellation arcs weave across a deep starlit nebula.',
+          tintTop: [0.03, 0.02, 0.09],
+          tintHorizon: [0.48, 0.32, 0.66],
+          tintGround: [0.06, 0.05, 0.16],
+          weights: { ocean: 0.22, dawn: 0.08, forest: 0.0, cosmos: 0.70 },
+          windIntensity: 0.28,
+          lightBloom: 0.64,
+          waterParting: 0.25,
+          accentGlow: '#C4B5FD',
+        },
       },
       {
         number: 11,
@@ -443,6 +637,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 50,
         sceneTheme: 'primordial-waters',
         canvasMode: 'yehi-or-dawn',
+        animationConfig: {
+          motif: 'e1-ch11-dawn-over-depths',
+          label: 'Or va-Tov — Sunrise Hovering Over the Deep',
+          description:
+            'A warm golden sunrise hovers over deep ocean swells, casting liquid amber reflections across the dark.',
+          tintTop: [0.05, 0.06, 0.14],
+          tintHorizon: [0.84, 0.58, 0.28],
+          tintGround: [0.06, 0.12, 0.22],
+          weights: { ocean: 0.52, dawn: 0.48, forest: 0.0, cosmos: 0.0 },
+          windIntensity: 0.36,
+          lightBloom: 0.82,
+          waterParting: 0.40,
+          accentGlow: '#F59E0B',
+        },
       },
       {
         number: 12,
@@ -473,6 +681,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 42,
         sceneTheme: 'sabbath-stillness',
         canvasMode: 'sabbath-breath',
+        animationConfig: {
+          motif: 'e1-ch12-forest-of-grace',
+          label: 'Chen va-Shalom — Lantern Walk Through the Forests of Scripture',
+          description:
+            'Cathedral redwoods and floating golden lantern spores settle into serene, starlit stillness.',
+          tintTop: [0.02, 0.06, 0.07],
+          tintHorizon: [0.42, 0.58, 0.46],
+          tintGround: [0.03, 0.09, 0.07],
+          weights: { ocean: 0.12, dawn: 0.24, forest: 0.44, cosmos: 0.20 },
+          windIntensity: 0.16,
+          lightBloom: 0.58,
+          waterParting: 0.10,
+          accentGlow: '#84CC16',
+        },
       },
     ],
   },
@@ -525,6 +747,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 65,
         sceneTheme: 'eden-mist',
         canvasMode: 'emerald-spores',
+        animationConfig: {
+          motif: 'e2-ch1-construct-eden',
+          label: 'Gan be-Eden — Constructing the Garden & Four Rivers',
+          description:
+            'Constructs five-tier emerald-and-gold botanical trees along both valley banks while the Four Rivers of Eden flow in luminous currents.',
+          tintTop: [0.02, 0.08, 0.05],
+          tintHorizon: [0.38, 0.72, 0.52],
+          tintGround: [0.04, 0.18, 0.12],
+          weights: { ocean: 0.12, dawn: 0.18, forest: 0.70, cosmos: 0.0 },
+          windIntensity: 0.28,
+          lightBloom: 0.65,
+          waterParting: 0.25,
+          accentGlow: '#52B788',
+        },
       },
       {
         number: 2,
@@ -558,6 +794,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 70,
         sceneTheme: 'eden-mist',
         canvasMode: 'meadow-fireflies',
+        animationConfig: {
+          motif: 'e2-ch2-two-trees',
+          label: 'Etz ha-Chayim — The Tree of Life & The First Boundary',
+          description:
+            'Contrasts the radiant golden Tree of Life on the left with the shadowed Tree of Knowledge and its pulsing boundary ring on the right.',
+          tintTop: [0.04, 0.08, 0.05],
+          tintHorizon: [0.76, 0.64, 0.32],
+          tintGround: [0.06, 0.15, 0.09],
+          weights: { ocean: 0.05, dawn: 0.35, forest: 0.60, cosmos: 0.0 },
+          windIntensity: 0.22,
+          lightBloom: 0.78,
+          waterParting: 0.15,
+          accentGlow: '#D4A853',
+        },
       },
       {
         number: 3,
@@ -594,6 +844,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 78,
         sceneTheme: 'ancient-forest',
         canvasMode: 'void-ripples',
+        animationConfig: {
+          motif: 'e2-ch3-coiling-serpent',
+          label: 'Arum — The Coiling Serpent on the Shadowed Bough',
+          description:
+            'Animates a sinuous, iridescent serpent coiling along a shadowed branch with slitted amber eyes, flickering forked tongue, and whispering rings.',
+          tintTop: [0.02, 0.04, 0.04],
+          tintHorizon: [0.24, 0.38, 0.26],
+          tintGround: [0.03, 0.07, 0.05],
+          weights: { ocean: 0.25, dawn: 0.05, forest: 0.60, cosmos: 0.10 },
+          windIntensity: 0.42,
+          lightBloom: 0.28,
+          waterParting: 0.05,
+          accentGlow: '#84A98C',
+        },
       },
       {
         number: 4,
@@ -627,13 +891,26 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 55,
         sceneTheme: 'ancient-forest',
         canvasMode: 'sacred-dust',
+        animationConfig: {
+          motif: 'e2-ch4-fig-leaves-fall',
+          label: 'Eirummim — Fractured Light & Drifting Fig Leaves',
+          description:
+            'Drifts falling five-lobed fig leaves and rising ground mist across a darkened, fractured twilight forest.',
+          tintTop: [0.04, 0.05, 0.07],
+          tintHorizon: [0.28, 0.32, 0.30],
+          tintGround: [0.05, 0.07, 0.06],
+          weights: { ocean: 0.20, dawn: 0.12, forest: 0.52, cosmos: 0.16 },
+          windIntensity: 0.35,
+          lightBloom: 0.22,
+          waterParting: 0.0,
+          accentGlow: '#94A3B8',
+        },
       },
       {
         number: 5,
         title: 'Where Are You?',
         scriptureRef: 'Genesis 3:8–10',
-        scriptureText:
-          'Then the LORD God called to the man, “Where are you?”',
+        scriptureText: 'Then the LORD God called to the man, “Where are you?”',
         hebrewQuote: 'Ayekah?',
         hebrewTranslation: 'Where are you?',
         soundCue: 'A cool wind rises. The garden sounds are distant now, thinner.',
@@ -663,6 +940,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 65,
         sceneTheme: 'parted-sky',
         canvasMode: 'ruach-wind',
+        animationConfig: {
+          motif: 'e2-ch5-ayekah-footsteps',
+          label: 'Ayekah — Seeking Footsteps in the Cool of the Day',
+          description:
+            'Sequential golden footsteps and acoustic calling ripples walk gently through the shadowed evening grove.',
+          tintTop: [0.03, 0.06, 0.11],
+          tintHorizon: [0.36, 0.48, 0.58],
+          tintGround: [0.04, 0.10, 0.12],
+          weights: { ocean: 0.38, dawn: 0.14, forest: 0.48, cosmos: 0.0 },
+          windIntensity: 0.68,
+          lightBloom: 0.44,
+          waterParting: 0.55,
+          accentGlow: '#7DD3FC',
+        },
       },
       {
         number: 6,
@@ -697,6 +988,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 72,
         sceneTheme: 'first-light',
         canvasMode: 'sacred-dust',
+        animationConfig: {
+          motif: 'e2-ch6-promised-seed',
+          label: 'Zera — The Crushed Serpent & The Promised Seed in the Ruins',
+          description:
+            'A vertical beam of golden light pierces dark thorns and a recoiling serpent as a living shoot sprouts from the soil.',
+          tintTop: [0.06, 0.04, 0.08],
+          tintHorizon: [0.72, 0.48, 0.24],
+          tintGround: [0.12, 0.08, 0.06],
+          weights: { ocean: 0.10, dawn: 0.58, forest: 0.22, cosmos: 0.10 },
+          windIntensity: 0.46,
+          lightBloom: 0.72,
+          waterParting: 0.20,
+          accentGlow: '#FBBF24',
+        },
       },
       {
         number: 7,
@@ -732,6 +1037,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 74,
         sceneTheme: 'deluge-ark',
         canvasMode: 'sky-vault',
+        animationConfig: {
+          motif: 'e2-ch7-flaming-sword',
+          label: 'Kotnot Or — Cherubim & The Flaming Sword East of Eden',
+          description:
+            'Animates the eastern Gate of Eden, sweeping Cherubim wings, and a whirling Flaming Sword casting embers into the night.',
+          tintTop: [0.07, 0.03, 0.06],
+          tintHorizon: [0.85, 0.42, 0.20],
+          tintGround: [0.16, 0.07, 0.06],
+          weights: { ocean: 0.30, dawn: 0.50, forest: 0.10, cosmos: 0.10 },
+          windIntensity: 0.58,
+          lightBloom: 0.80,
+          waterParting: 0.65,
+          accentGlow: '#FB923C',
+        },
       },
       {
         number: 8,
@@ -765,6 +1084,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 68,
         sceneTheme: 'eden-mist',
         canvasMode: 'emerald-spores',
+        animationConfig: {
+          motif: 'e2-ch8-healing-river',
+          label: 'Refuah — The River of Life & Leaves for the Healing of Nations',
+          description:
+            'A crystal river of life flows between twin banks of luminous emerald healing trees.',
+          tintTop: [0.02, 0.07, 0.06],
+          tintHorizon: [0.46, 0.74, 0.56],
+          tintGround: [0.04, 0.18, 0.14],
+          weights: { ocean: 0.28, dawn: 0.22, forest: 0.50, cosmos: 0.0 },
+          windIntensity: 0.30,
+          lightBloom: 0.74,
+          waterParting: 0.35,
+          accentGlow: '#34D399',
+        },
       },
       {
         number: 9,
@@ -798,6 +1131,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 56,
         sceneTheme: 'sabbath-stillness',
         canvasMode: 'sabbath-breath',
+        animationConfig: {
+          motif: 'e2-ch9-east-of-eden-grace',
+          label: 'Ruach ha-Yom — Still Loved East of Eden',
+          description:
+            'A warm golden pathway winds across twilight hills beneath the evening star and gentle breeze.',
+          tintTop: [0.05, 0.04, 0.11],
+          tintHorizon: [0.68, 0.52, 0.34],
+          tintGround: [0.10, 0.09, 0.14],
+          weights: { ocean: 0.20, dawn: 0.52, forest: 0.14, cosmos: 0.14 },
+          windIntensity: 0.22,
+          lightBloom: 0.68,
+          waterParting: 0.15,
+          accentGlow: '#EAB308',
+        },
       },
     ],
   },
@@ -853,6 +1200,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 65,
         sceneTheme: 'deluge-ark',
         canvasMode: 'sky-vault',
+        animationConfig: {
+          motif: 'e3-ch1-deluge-ark',
+          label: 'Chen — The Gathering Deluge & The Floating Ark Sanctuary',
+          description:
+            'Slanting tempest rain and deep ocean swells cradle the timber Ark with its warm, lantern-lit window.',
+          tintTop: [0.02, 0.04, 0.08],
+          tintHorizon: [0.24, 0.34, 0.46],
+          tintGround: [0.02, 0.06, 0.12],
+          weights: { ocean: 0.90, dawn: 0.10, forest: 0.0, cosmos: 0.0 },
+          windIntensity: 0.88,
+          lightBloom: 0.30,
+          waterParting: 0.55,
+          accentGlow: '#38BDF8',
+        },
       },
       {
         number: 2,
@@ -888,6 +1249,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 65,
         sceneTheme: 'primordial-waters',
         canvasMode: 'ruach-wind',
+        animationConfig: {
+          motif: 'e3-ch2-receding-wind-ark',
+          label: 'Vayizkor Elohim — Receding Wind & Emergent Peaks of Ararat',
+          description:
+            'Sweeping wind currents part the floodwaters as the twin mountain peaks of Ararat emerge on the horizon.',
+          tintTop: [0.03, 0.07, 0.14],
+          tintHorizon: [0.42, 0.56, 0.68],
+          tintGround: [0.03, 0.10, 0.18],
+          weights: { ocean: 0.75, dawn: 0.25, forest: 0.0, cosmos: 0.0 },
+          windIntensity: 0.76,
+          lightBloom: 0.54,
+          waterParting: 0.78,
+          accentGlow: '#7DD3FC',
+        },
       },
       {
         number: 3,
@@ -921,6 +1296,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 65,
         sceneTheme: 'first-light',
         canvasMode: 'yehi-or-dawn',
+        animationConfig: {
+          motif: 'e3-ch3-dove-olive-rainbow',
+          label: 'Qeshet be-Anan — The Returning Dove with Olive Leaf & Covenant Bow',
+          description:
+            'A white dove glides across the clearing sky with a fresh green olive leaf beneath a luminous covenant rainbow arc.',
+          tintTop: [0.06, 0.08, 0.16],
+          tintHorizon: [0.88, 0.66, 0.36],
+          tintGround: [0.12, 0.20, 0.24],
+          weights: { ocean: 0.28, dawn: 0.62, forest: 0.10, cosmos: 0.0 },
+          windIntensity: 0.26,
+          lightBloom: 0.88,
+          waterParting: 0.45,
+          accentGlow: '#FCD34D',
+        },
       },
     ],
   },
@@ -976,6 +1365,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 68,
         sceneTheme: 'desert-stars',
         canvasMode: 'sacred-dust',
+        animationConfig: {
+          motif: 'e4-ch1-pilgrim-tent-fire',
+          label: 'Lekh-Lekha — Nomad Tent & Pilgrim Campfire on the Dunes',
+          description:
+            'Desert sand dunes, a pitched nomad tent, and a crackling pilgrim campfire send glowing embers toward the night horizon.',
+          tintTop: [0.06, 0.04, 0.09],
+          tintHorizon: [0.76, 0.46, 0.22],
+          tintGround: [0.22, 0.12, 0.07],
+          weights: { ocean: 0.0, dawn: 0.55, forest: 0.0, cosmos: 0.45 },
+          windIntensity: 0.38,
+          lightBloom: 0.66,
+          waterParting: 0.10,
+          accentGlow: '#F59E0B',
+        },
       },
       {
         number: 2,
@@ -1011,6 +1414,20 @@ export const BIBLE_EPISODES: StoryEpisode[] = [
         durationSec: 70,
         sceneTheme: 'celestial-spheres',
         canvasMode: 'star-constellations',
+        animationConfig: {
+          motif: 'e4-ch2-counted-stars',
+          label: 'Ha-Kokhavim — Abraham Beneath the Cathedral of Constellations',
+          description:
+            'Luminous constellation geometry and a vast galactic arch of stars wheel across the desert sky above the open tent.',
+          tintTop: [0.02, 0.02, 0.07],
+          tintHorizon: [0.38, 0.28, 0.56],
+          tintGround: [0.08, 0.06, 0.12],
+          weights: { ocean: 0.05, dawn: 0.05, forest: 0.0, cosmos: 0.90 },
+          windIntensity: 0.24,
+          lightBloom: 0.72,
+          waterParting: 0.15,
+          accentGlow: '#EAB308',
+        },
       },
     ],
   },
