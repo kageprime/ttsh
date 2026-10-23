@@ -1,6 +1,7 @@
 import { SceneTheme } from '../data/stories';
 import { NarrationBlock } from './storybookLogic';
 import { ambientSound } from './ambientAudio';
+import { audioAnalyzerBus } from './audioAnalyzerBus';
 
 interface PlayBlockOptions {
   block: NarrationBlock;
@@ -65,6 +66,7 @@ class NarrationDirector {
   public stop() {
     this.currentRunId += 1;
     this.clearTimers();
+    audioAnalyzerBus.setVoiceActive(false);
 
     if (this.activeSourceNode) {
       try {
@@ -247,6 +249,8 @@ class NarrationDirector {
             const rate = 1.04;
             source.playbackRate.value = rate;
             source.connect(this.audioCtx.destination);
+            audioAnalyzerBus.attachVoiceNode(this.audioCtx, source);
+            audioAnalyzerBus.setVoiceActive(true);
             this.activeSourceNode = source;
 
             const exactDurationMs = Math.ceil(
@@ -257,6 +261,7 @@ class NarrationDirector {
             const finishOnce = () => {
               if (finished || this.currentRunId !== runId) return;
               finished = true;
+              audioAnalyzerBus.setVoiceActive(false);
               this.activeSourceNode = null;
               this.schedule(() => {
                 if (this.currentRunId === runId) {

@@ -8,7 +8,7 @@ import {
   PiX,
 } from 'react-icons/pi';
 
-export type ActiveRoute = 'home' | 'episodes' | 'about' | 'reader';
+export type ActiveRoute = 'home' | 'episodes' | 'about' | 'reader' | 'director';
 
 interface NavbarProps {
   activeRoute: ActiveRoute;
@@ -32,63 +32,85 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
-      <header className="sticky top-0 z-40 px-3 sm:px-6 pt-2.5 sm:pt-4 pointer-events-none">
+      <header className="sticky top-0 z-40 border-b border-[#FAF6EE]/[0.08] bg-[#080B10]/92 backdrop-blur-md">
         <nav
           aria-label="Primary"
-          className="pointer-events-auto max-w-[1380px] mx-auto flex items-center justify-between gap-4 px-4 sm:px-6 h-12 sm:h-14 rounded-xl border border-white/10 bg-[#0B0F14]/88 backdrop-blur-md shadow-lg shadow-black/30"
+          className="max-w-[1380px] mx-auto flex items-center justify-between gap-8 px-4 sm:px-8 h-14"
         >
-          {/* Zone 1: Brand Wordmark */}
+          {/* Zone 1: Single Text Element Brand Wordmark */}
           <button
             type="button"
             onClick={() => onNavigate('home')}
-            className="text-left font-serif-editorial text-lg sm:text-xl tracking-tight whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4A853] rounded"
+            className="text-left font-serif-editorial text-lg sm:text-xl tracking-tight text-[#FAF6EE] font-medium whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4A853] rounded cursor-pointer"
           >
-            <span className="text-[#F4EFE6] font-medium">Tales That Shaped</span>{' '}
-            <span className="text-[#D4A853] font-normal hidden xs:inline sm:inline">Humanity</span>
+            Tales That Shaped Humanity
           </button>
 
-          {/* Zone 2: Desktop Navigation Links */}
-          <div className="hidden md:flex items-center gap-8 text-xs tracking-[0.2em] uppercase font-medium">
+          {/* Zone 2: Desktop Single-Line Text Navigation Links */}
+          <div className="hidden md:flex items-center gap-7 text-xs tracking-[0.16em] uppercase font-medium">
+            <button
+              type="button"
+              onClick={() => onNavigate('home')}
+              className={`transition-colors whitespace-nowrap shrink-0 py-1 border-b cursor-pointer ${
+                activeRoute === 'home'
+                  ? 'text-[#D4A853] border-[#D4A853]'
+                  : 'text-[#FAF6EE]/65 hover:text-[#FAF6EE] border-transparent'
+              }`}
+            >
+              Home
+            </button>
             <button
               type="button"
               onClick={() => onNavigate('episodes')}
-              className={`transition-colors whitespace-nowrap shrink-0 py-1 border-b ${
+              className={`transition-colors whitespace-nowrap shrink-0 py-1 border-b cursor-pointer ${
                 activeRoute === 'episodes' || activeRoute === 'reader'
                   ? 'text-[#D4A853] border-[#D4A853]'
-                  : 'text-stone-300 hover:text-white border-transparent'
+                  : 'text-[#FAF6EE]/65 hover:text-[#FAF6EE] border-transparent'
               }`}
             >
               Episodes
             </button>
             <button
               type="button"
+              data-testid="nav-director-studio"
+              onClick={() => onNavigate('director')}
+              className={`transition-colors whitespace-nowrap shrink-0 py-1 border-b cursor-pointer ${
+                activeRoute === 'director'
+                  ? 'text-[#D4A853] border-[#D4A853]'
+                  : 'text-[#FAF6EE]/65 hover:text-[#FAF6EE] border-transparent'
+              }`}
+            >
+              Director Studio
+            </button>
+            <button
+              type="button"
               onClick={() => onNavigate('about')}
-              className={`transition-colors whitespace-nowrap shrink-0 py-1 border-b ${
+              className={`transition-colors whitespace-nowrap shrink-0 py-1 border-b cursor-pointer ${
                 activeRoute === 'about'
                   ? 'text-[#D4A853] border-[#D4A853]'
-                  : 'text-stone-300 hover:text-white border-transparent'
+                  : 'text-[#FAF6EE]/65 hover:text-[#FAF6EE] border-transparent'
               }`}
             >
               About
-            </button>
-          </div>
-
-          {/* Zone 3: Primary Action & Reading Settings */}
-          <div className="hidden md:flex items-center gap-3 shrink-0">
-            <button
-              type="button"
-              onClick={onOpenSubscribe}
-              className="px-4 py-2 rounded-lg bg-[#D4A853] hover:bg-[#E0B663] text-[#090C10] text-xs font-semibold tracking-[0.16em] uppercase transition-colors whitespace-nowrap shrink-0"
-            >
-              Subscribe
             </button>
             <button
               type="button"
               onClick={onOpenSettings}
               aria-label="Open reading and accessibility settings"
-              className="w-9 h-9 rounded-lg border border-white/10 flex items-center justify-center text-stone-300 hover:text-[#F4EFE6] hover:bg-white/5 transition-colors"
+              className="transition-colors whitespace-nowrap shrink-0 py-1 border-b border-transparent text-[#FAF6EE]/65 hover:text-[#FAF6EE] cursor-pointer"
             >
-              <PiSlidersHorizontal className="w-4 h-4" />
+              Reading Settings
+            </button>
+          </div>
+
+          {/* Zone 3: Single Primary Action */}
+          <div className="hidden md:flex items-center shrink-0">
+            <button
+              type="button"
+              onClick={onOpenSubscribe}
+              className="px-4 py-2 rounded-lg bg-[#D4A853] hover:bg-[#E0B663] text-[#090C10] text-xs font-semibold tracking-[0.14em] uppercase transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              Subscribe
             </button>
           </div>
 
@@ -109,7 +131,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               aria-expanded={mobileMenuOpen}
               className="min-w-[44px] min-h-[44px] flex items-center justify-center text-stone-200 hover:text-white rounded-lg"
             >
-              {mobileMenuOpen ? <PiX className="w-5 h-5" /> : <PiList className="w-5 h-5" />}
+              {mobileMenuOpen ? (
+                <PiX className="w-5 h-5" />
+              ) : (
+                <PiList className="w-5 h-5" />
+              )}
             </button>
           </div>
         </nav>
@@ -119,7 +145,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div
             role="dialog"
             aria-label="Mobile navigation menu"
-            className="pointer-events-auto md:hidden mt-2 rounded-xl border border-white/15 bg-[#0C1017]/95 backdrop-blur-xl p-4 shadow-2xl"
+            className="md:hidden border-t border-[#FAF6EE]/10 bg-[#0B0E14] px-4 py-4 shadow-2xl"
           >
             <div className="flex flex-col gap-1">
               <button
@@ -148,6 +174,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
               <button
                 type="button"
+                onClick={() => handleMobileNav('director')}
+                className="w-full min-h-[44px] px-3 py-2.5 text-left text-sm font-medium text-stone-200 hover:bg-white/5 rounded-lg flex items-center justify-between"
+              >
+                <span>Director Studio</span>
+                {activeRoute === 'director' && (
+                  <span className="text-[11px] uppercase tracking-widest text-[#D4A853]">
+                    Current
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
                 onClick={() => handleMobileNav('about')}
                 className="w-full min-h-[44px] px-3 py-2.5 text-left text-sm font-medium text-stone-200 hover:bg-white/5 rounded-lg flex items-center justify-between"
               >
@@ -167,7 +205,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }}
                 className="w-full min-h-[44px] px-3 py-2.5 text-left text-sm font-medium text-stone-300 hover:bg-white/5 rounded-lg"
               >
-                Reading & Accessibility
+                Reading &amp; Accessibility
               </button>
               <button
                 type="button"
@@ -185,7 +223,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       </header>
 
       {/* Mobile Fixed Bottom Navigation Bar */}
-      {activeRoute !== 'reader' && (
+      {activeRoute !== 'reader' && activeRoute !== 'director' && (
         <nav
           aria-label="Mobile bottom navigation"
           className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#090C10]/95 backdrop-blur-md border-t border-white/10 grid grid-cols-3 items-center px-2"

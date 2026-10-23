@@ -1,5 +1,6 @@
 import { SceneTheme } from '../data/stories';
 import { ChapterVisualMotif } from './storybookLogic';
+import { audioAnalyzerBus } from './audioAnalyzerBus';
 
 const THEME_FREQUENCIES: Record<SceneTheme, [number, number, number, number]> = {
   'primordial-waters': [110.0, 164.81, 220.0, 261.63], // A2, E3, A3, C4 (Aeolian deep)
@@ -175,6 +176,7 @@ class AmbientSoundEngine {
       master.gain.setValueAtTime(0.001, ctx.currentTime);
       master.gain.exponentialRampToValueAtTime(0.042, ctx.currentTime + 2.2);
       master.connect(ctx.destination);
+      audioAnalyzerBus.attachSoundscapeNode(ctx, master);
       this.masterGain = master;
 
       const padFilter = ctx.createBiquadFilter();

@@ -1,10 +1,5 @@
 import React from 'react';
-import {
-  PiArrowRight,
-  PiBookOpenText,
-  PiHeadphones,
-  PiNotebook,
-} from 'react-icons/pi';
+import { PiArrowRight } from 'react-icons/pi';
 
 interface AboutViewProps {
   onStartReading: () => void;
@@ -13,11 +8,11 @@ interface AboutViewProps {
 export const AboutView: React.FC<AboutViewProps> = ({ onStartReading }) => {
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-24">
-      <p className="text-xs uppercase tracking-[0.26em] text-[#D4A853] font-medium mb-3">
-        ABOUT THE PROJECT
+      <p className="text-xs uppercase tracking-[0.24em] text-[#D4A853] font-medium mb-3">
+        About the Project
       </p>
 
-      <h1 className="font-serif-editorial text-4xl sm:text-6xl text-[#F4EFE6] font-normal leading-tight mb-6">
+      <h1 className="font-serif-editorial text-4xl sm:text-6xl text-[#F4EFE6] font-normal leading-tight mb-6 text-balance">
         Why We Built a Listening Scripture
       </h1>
 
@@ -36,13 +31,16 @@ export const AboutView: React.FC<AboutViewProps> = ({ onStartReading }) => {
           reimagines the ancient biblical narrative as an intimate,
           chapter-by-chapter storybook and contemplative listening experience.
           Each episode pairs evocative sound cues, meditative literary prose,
-          original Hebrew word studies, and guided <em>Selah</em> reflections.
+          original Hebrew word studies, and guided <em>Lectio Divina</em>{' '}
+          reflections.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 my-12 border-t border-b border-white/10 py-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 my-12 border-y border-white/10 py-8">
         <div>
-          <PiHeadphones className="w-5 h-5 text-[#D4A853] mb-3" />
+          <span className="font-mono-tabular text-xs text-[#D4A853] tracking-widest block mb-2">
+            01
+          </span>
           <h2 className="font-serif-editorial text-xl text-[#F4EFE6] mb-1.5">
             Acoustic Space
           </h2>
@@ -53,7 +51,9 @@ export const AboutView: React.FC<AboutViewProps> = ({ onStartReading }) => {
         </div>
 
         <div>
-          <PiBookOpenText className="w-5 h-5 text-[#D4A853] mb-3" />
+          <span className="font-mono-tabular text-xs text-[#D4A853] tracking-widest block mb-2">
+            02
+          </span>
           <h2 className="font-serif-editorial text-xl text-[#F4EFE6] mb-1.5">
             Chapter Rhythm
           </h2>
@@ -64,13 +64,15 @@ export const AboutView: React.FC<AboutViewProps> = ({ onStartReading }) => {
         </div>
 
         <div>
-          <PiNotebook className="w-5 h-5 text-[#D4A853] mb-3" />
+          <span className="font-mono-tabular text-xs text-[#D4A853] tracking-widest block mb-2">
+            03
+          </span>
           <h2 className="font-serif-editorial text-xl text-[#F4EFE6] mb-1.5">
             Personal Journal
           </h2>
           <p className="text-xs sm:text-sm text-stone-400 leading-relaxed">
             Every chapter includes Hebrew literary context and space to record
-            your own reflections.
+            and export your own reflections.
           </p>
         </div>
       </div>

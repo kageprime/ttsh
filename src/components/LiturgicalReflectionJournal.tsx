@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  PiSparkle,
   PiX,
   PiDownloadSimple,
   PiCheck,
@@ -396,41 +395,26 @@ export const LiturgicalReflectionJournal: React.FC<
             animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
             exit={{ opacity: 0, y: 12, scale: 0.96, filter: 'blur(4px)' }}
             transition={{ duration: 0.36, ease: CINEMATIC_EASE }}
-            className="relative w-full max-w-[680px] max-h-[90vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden"
-            style={{
-              background: `linear-gradient(145deg, ${episode.accentColor}1E 0%, rgba(10, 13, 20, 0.98) 45%, rgba(8, 10, 15, 0.99) 100%)`,
-              border: `1px solid ${episode.accentColor}40`,
-            }}
+            className="relative w-full max-w-[680px] max-h-[90vh] flex flex-col rounded-2xl bg-[#0B0E14] border border-[#FAF6EE]/12 shadow-2xl overflow-hidden"
           >
             {/* Journal Header */}
             <div className="px-6 pt-6 pb-4 border-b border-[#FAF6EE]/10 flex items-start justify-between gap-4 shrink-0">
-              <div className="flex items-center gap-3.5 min-w-0">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: `${episode.accentColor}25` }}
-                >
-                  <PiSparkle
-                    className="w-5 h-5"
-                    style={{ color: episode.accentColor }}
-                  />
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-1.5 text-[0.66rem] tracking-[0.18em] uppercase text-[#D4A853]">
+                  <span>Liturgical Reflection Journal</span>
+                  <span aria-hidden="true">·</span>
+                  <span>
+                    Chapter {formatChapterNumber(currentChapter.number)}
+                  </span>
+                  <span aria-hidden="true">·</span>
+                  <span className="text-[#FAF6EE]/55 font-mono-tabular">
+                    {episodeHighlights.length} Illuminated ·{' '}
+                    {savedChapterNotesCount} Notes
+                  </span>
                 </div>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-1.5 text-[0.66rem] tracking-[0.18em] uppercase text-[#D4A853]">
-                    <span>Liturgical Reflection Journal</span>
-                    <span aria-hidden="true">·</span>
-                    <span>
-                      Chapter {formatChapterNumber(currentChapter.number)}
-                    </span>
-                    <span aria-hidden="true">·</span>
-                    <span className="text-[#FAF6EE]/55">
-                      {episodeHighlights.length} Illuminated ·{' '}
-                      {savedChapterNotesCount} Notes
-                    </span>
-                  </div>
-                  <h2 className="font-serif-editorial text-xl sm:text-2xl text-[#FAF6EE] truncate mt-0.5">
-                    {currentChapter.title}
-                  </h2>
-                </div>
+                <h2 className="font-serif-editorial text-xl sm:text-2xl text-[#FAF6EE] truncate mt-1">
+                  {currentChapter.title}
+                </h2>
               </div>
 
               <button
@@ -720,9 +704,6 @@ export const LiturgicalReflectionJournal: React.FC<
                           >
                             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                               <div className="flex items-center gap-2 text-[0.66rem] tracking-[0.15em] uppercase text-[#FAF6EE]/65">
-                                <span
-                                  className={`w-2 h-2 rounded-full ${st.badge}`}
-                                />
                                 <span className={st.textAccent}>{st.label}</span>
                                 <span aria-hidden="true">·</span>
                                 <span>

@@ -14,6 +14,7 @@ import { Navbar, ActiveRoute } from './components/Navbar';
 import { HomeView } from './components/HomeView';
 import { EpisodesCatalogView } from './components/EpisodesCatalogView';
 import { EpisodeReaderView } from './components/EpisodeReaderView';
+import { AdminDirectorStudio } from './components/AdminDirectorStudio';
 import { AboutView } from './components/AboutView';
 import { SettingsModal } from './components/SettingsModal';
 import { SubscribeModal } from './components/SubscribeModal';
@@ -30,6 +31,9 @@ export default function App() {
   const [activeRoute, setActiveRoute] = useState<ActiveRoute>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
+      if (params.get('route') === 'director') {
+        return 'director';
+      }
       if (params.get('autostart') === '1' || params.get('episode')) {
         return 'reader';
       }
@@ -226,11 +230,28 @@ export default function App() {
             onMarkChapterRead={handleMarkChapterRead}
             onBackToEpisodes={() => handleNavigate('episodes')}
             onSelectEpisode={(epId, chIdx = 0) => handleOpenEpisode(epId, false, chIdx)}
+            onOpenDirectorStudio={(epId, chIdx) => {
+              setCurrentEpisodeId(epId);
+              setInitialChapterIndex(chIdx);
+              setActiveRoute('director');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+        )}
+
+        {activeRoute === 'director' && (
+          <AdminDirectorStudio
+            episodes={BIBLE_EPISODES}
+            initialEpisodeId={activeEpisode.id}
+            initialChapterIndex={initialChapterIndex}
+            onOpenInReader={(epId, chIdx) => handleOpenEpisode(epId, false, chIdx)}
           />
         )}
       </main>
 
-      {activeRoute !== 'reader' && <Footer onNavigate={handleNavigate} />}
+      {activeRoute !== 'reader' && activeRoute !== 'director' && (
+        <Footer onNavigate={handleNavigate} />
+      )}
 
       <SettingsModal
         isOpen={settingsOpen}

@@ -6,7 +6,6 @@ import {
   PiPauseFill,
   PiCaretLeft,
   PiCaretRight,
-  PiSparkle,
   PiSpeakerHigh,
   PiSpeakerSlash,
   PiArticle,
@@ -20,6 +19,7 @@ import {
   PiBookmarkSimple,
   PiBookmarkSimpleFill,
   PiNotePencil,
+  PiSlidersHorizontal,
 } from 'react-icons/pi';
 import { StoryEpisode } from '../data/stories';
 import {
@@ -48,6 +48,7 @@ import {
 } from './LiturgicalReflectionJournal';
 import { ambientSound } from '../utils/ambientAudio';
 import { narrationDirector } from '../utils/narrationEngine';
+import { useVisualConfigs } from '../utils/visualConfigStore';
 import {
   LEXICON_ENTRIES,
   LexiconEntry,
@@ -72,6 +73,7 @@ interface EpisodeReaderViewProps {
   onMarkChapterRead: (episodeId: string, chapterNumber: number) => void;
   onBackToEpisodes: () => void;
   onSelectEpisode: (episodeId: string, chapterIndex?: number) => void;
+  onOpenDirectorStudio?: (episodeId: string, chapterIndex: number) => void;
 }
 
 export const EpisodeReaderView: React.FC<EpisodeReaderViewProps> = ({
@@ -87,7 +89,9 @@ export const EpisodeReaderView: React.FC<EpisodeReaderViewProps> = ({
   onMarkChapterRead,
   onBackToEpisodes,
   onSelectEpisode,
+  onOpenDirectorStudio,
 }) => {
+  const { getConfig } = useVisualConfigs();
   const [chapterIndex, setChapterIndex] = useState<number>(() =>
     clampChapterIndex(initialChapterIndex, episode.chapters.length)
   );
@@ -686,6 +690,15 @@ export const EpisodeReaderView: React.FC<EpisodeReaderViewProps> = ({
         surgeCount={surgeCount}
         highContrast={readerSettings.highContrast}
         inspectionMode={isBehold}
+        customVisualConfig={getConfig(episode.id, currentChapter.number)}
+        activeParagraphIndex={
+          activeBlock && typeof activeBlock.paragraphIndex === 'number'
+            ? activeBlock.paragraphIndex
+            : Math.min(
+                paragraphs.length - 1,
+                Math.floor(chapterScrollProgress * paragraphs.length)
+              )
+        }
         onPointerAudioRipple={(nx, ny, vel) => {
           if (!isMuted && readerSettings.ambientAudioEnabled) {
             ambientSound.triggerPointerRipple(
@@ -710,49 +723,32 @@ export const EpisodeReaderView: React.FC<EpisodeReaderViewProps> = ({
 
       {/* Minimal, Sleek Stage Container */}
       <div className="relative z-10 max-w-[880px] mx-auto px-4 md:px-8 pt-4 md:pt-6 pb-24">
-        {/* Sticky Minimal Transparent Reader Header with Contemplative Study Controls */}
-        <header className="sticky top-16 z-30 flex flex-wrap items-center justify-between gap-2.5 min-h-[54px] py-2.5 px-3.5 -mx-3 mb-8 md:mb-10 rounded-2xl bg-[#080B10]/80 backdrop-blur-xl border border-[#FAF6EE]/10">
-          <button
-            type="button"
-            onClick={onBackToEpisodes}
-            className="inline-flex items-center gap-2 text-[0.82rem] text-[#FAF6EE]/65 hover:text-[#D4A853] transition-colors shrink-0 min-h-[38px] px-1 cursor-pointer"
-          >
-            <PiArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">All episodes</span>
-            <span className="sm:hidden">Episodes</span>
-          </button>
+        {/* Sticky Minimal Reader Header with Consolidated Study & Stage Controls */}
+        <header className="sticky top-16 z-30 flex flex-wrap items-center justify-between gap-3 min-h-[52px] py-2 px-3.5 -mx-3 mb-8 md:mb-10 rounded-xl bg-[#080B10]/88 backdrop-blur-xl border border-[#FAF6EE]/10">
+          {/* Left Zone: Back Link + Clean Unboxed Progress Readout */}
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={onBackToEpisodes}
+              className="inline-flex items-center gap-2 text-[0.82rem] text-[#FAF6EE]/65 hover:text-[#D4A853] transition-colors shrink-0 min-h-[36px] px-1 cursor-pointer whitespace-nowrap"
+            >
+              <PiArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">All episodes</span>
+              <span className="sm:hidden">Episodes</span>
+            </button>
 
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0">
-            {/* Live Narration Status Cue */}
-            <AnimatePresence mode="wait">
-              {isPlaying && activeBlock && (
-                <motion.div
-                  key={`${activeBlock.kind}-${currentChapter.number}`}
-                  initial={{ opacity: 0, y: -6, scale: 0.96 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 6, scale: 0.96 }}
-                  transition={{ duration: 0.28, ease: CINEMATIC_EASE }}
-                  data-testid="narration-status-badge"
-                  className="hidden lg:flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[#D4A853]/12 border border-[#D4A853]/30 text-[#D4A853] text-[0.66rem] tracking-[0.15em] uppercase"
-                >
-                  <PiWaveform className="w-3.5 h-3.5 animate-pulse" />
-                  <span>
-                    {activeBlock.kind === 'sound-cue'
-                      ? `Sound Cue · Ch ${formatChapterNumber(currentChapter.number)}`
-                      : `Narrating · Ch ${formatChapterNumber(currentChapter.number)}`}
-                  </span>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <span aria-hidden="true" className="text-[#FAF6EE]/20">
+              ·
+            </span>
 
-            {/* Single Unified Visual Progress Indicator for Current Book & Collection */}
+            {/* Unboxed Editorial Progress Readout */}
             <div
               data-testid="reader-completion-header"
               title={`${episode.title}: ${completionStats.episodePercent}% complete (${completionStats.episodeCompletedCount}/${completionStats.episodeTotalCount} chapters) · ${episode.series} Collection: ${completionStats.collectionPercent}% (${completionStats.collectionCompletedCount}/${completionStats.collectionTotalCount})`}
-              className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-black/40 border border-[#FAF6EE]/10"
+              className="flex items-center gap-2"
             >
               <span
-                className="text-[0.66rem] tracking-[0.16em] uppercase font-medium whitespace-nowrap"
+                className="text-[0.68rem] tracking-[0.16em] uppercase font-medium whitespace-nowrap"
                 style={{ color: episode.accentColor }}
               >
                 {episode.code}
@@ -763,7 +759,7 @@ export const EpisodeReaderView: React.FC<EpisodeReaderViewProps> = ({
                 aria-valuenow={completionStats.episodePercent}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                className="w-10 sm:w-16 h-1 bg-[#FAF6EE]/15 rounded-full overflow-hidden shrink-0"
+                className="w-10 sm:w-14 h-1 bg-[#FAF6EE]/15 rounded-full overflow-hidden shrink-0"
               >
                 <motion.div
                   className="h-full bg-[#D4A853]"
@@ -772,171 +768,214 @@ export const EpisodeReaderView: React.FC<EpisodeReaderViewProps> = ({
                   transition={{ duration: 0.55, ease: CINEMATIC_EASE }}
                 />
               </div>
-              <span className="font-mono-tabular text-[0.68rem] text-[#FAF6EE]/75 whitespace-nowrap">
+              <span className="font-mono-tabular text-[0.68rem] text-[#FAF6EE]/70 whitespace-nowrap">
                 {completionStats.episodePercent}%
               </span>
             </div>
 
-            {/* Hebrew/Greek Root Word Lexicon Lens Toggle */}
-            <button
-              type="button"
-              data-testid="toggle-lexicon-lens"
-              onClick={() => setLexiconLensActive((prev) => !prev)}
-              aria-pressed={lexiconLensActive}
-              title="Toggle inline Hebrew & Greek Root Word Lexicon Lens"
-              className={`min-h-[36px] px-2.5 py-1.5 rounded-lg border text-[0.68rem] tracking-[0.12em] uppercase flex items-center gap-1.5 transition-colors cursor-pointer ${
-                lexiconLensActive
-                  ? 'border-[#D4A853]/45 bg-[#D4A853]/15 text-[#F5D78E]'
-                  : 'border-[#FAF6EE]/10 bg-black/40 text-[#FAF6EE]/65 hover:text-[#FAF6EE]'
-              }`}
-            >
-              <PiBookOpenText className="w-3.5 h-3.5 text-[#D4A853]" />
-              <span className="hidden md:inline">Lexicon</span>
-            </button>
-
-            {/* Cross-Reference Theological Timeline Button */}
-            <button
-              type="button"
-              data-testid="toggle-theological-timeline"
-              onClick={() =>
-                setStageState((prev) =>
-                  transitionReaderStage(prev, {
-                    type: 'TOGGLE_DRAWER',
-                    drawer: 'timeline',
-                  })
-                )
-              }
-              title="Open Cross-Reference Theological Timeline across Scripture"
-              className={`min-h-[36px] px-2.5 py-1.5 rounded-lg border text-[0.68rem] tracking-[0.12em] uppercase flex items-center gap-1.5 transition-colors cursor-pointer ${
-                activeDrawer === 'timeline'
-                  ? 'border-[#D4A853]/45 bg-[#D4A853]/15 text-[#F5D78E]'
-                  : 'border-[#FAF6EE]/10 bg-black/40 text-[#FAF6EE]/70 hover:text-[#FAF6EE]'
-              }`}
-            >
-              <PiGitCommit className="w-3.5 h-3.5 text-[#D4A853]" />
-              <span className="hidden md:inline">Timeline</span>
-            </button>
-
-            {/* Liturgical Reflection Journal Button */}
-            <button
-              type="button"
-              data-testid="toggle-reflection-journal"
-              onClick={() =>
-                setStageState((prev) =>
-                  transitionReaderStage(prev, {
-                    type: 'TOGGLE_DRAWER',
-                    drawer: 'reflect',
-                  })
-                )
-              }
-              title="Open Liturgical Reflection Journal, Verse Highlights & Markdown Export"
-              className={`min-h-[36px] px-2.5 py-1.5 rounded-lg border text-[0.68rem] tracking-[0.12em] uppercase flex items-center gap-1.5 transition-colors cursor-pointer ${
-                activeDrawer === 'reflect'
-                  ? 'border-[#D4A853]/45 bg-[#D4A853]/15 text-[#F5D78E]'
-                  : 'border-[#FAF6EE]/10 bg-black/40 text-[#FAF6EE]/70 hover:text-[#FAF6EE]'
-              }`}
-            >
-              <PiNotePencil className="w-3.5 h-3.5 text-[#D4A853]" />
-              <span className="hidden md:inline">Journal</span>
-              {episodeHighlights.length > 0 && (
-                <span className="font-mono-tabular text-[0.62rem] text-[#D4A853]">
-                  ({episodeHighlights.length})
-                </span>
+            {/* Quiet Unboxed Narration Status Text */}
+            <AnimatePresence mode="wait">
+              {isPlaying && activeBlock && (
+                <motion.span
+                  key={`${activeBlock.kind}-${currentChapter.number}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  data-testid="narration-status-badge"
+                  className="hidden lg:inline-flex items-center gap-1.5 text-[0.66rem] tracking-[0.14em] uppercase text-[#D4A853] whitespace-nowrap"
+                >
+                  <span aria-hidden="true" className="text-[#FAF6EE]/20">
+                    ·
+                  </span>
+                  <span>
+                    {activeBlock.kind === 'sound-cue'
+                      ? `Sound Cue · Ch ${formatChapterNumber(currentChapter.number)}`
+                      : `Narrating · Ch ${formatChapterNumber(currentChapter.number)}`}
+                  </span>
+                </motion.span>
               )}
-            </button>
+            </AnimatePresence>
+          </div>
 
-            {/* Canvas Inspection Mode ("Contemplate Scene") Toggle */}
-            <button
-              type="button"
-              data-testid="toggle-canvas-inspection"
-              onClick={() =>
-                setStageState((prev) =>
-                  transitionReaderStage(prev, { type: 'TOGGLE_BEHOLD' })
-                )
-              }
-              aria-pressed={isBehold}
-              title={
-                isBehold
-                  ? 'Return to Scripture text'
-                  : 'Contemplate Scene — Hide text and explore the interactive canvas'
-              }
-              className={`min-h-[36px] px-2.5 py-1.5 rounded-lg border text-[0.68rem] tracking-[0.12em] uppercase flex items-center gap-1.5 transition-colors cursor-pointer ${
-                isBehold
-                  ? 'border-[#D4A853] bg-[#D4A853] text-[#0A0A0A] font-semibold'
-                  : 'border-[#FAF6EE]/10 bg-black/40 text-[#FAF6EE]/75 hover:text-[#FAF6EE]'
-              }`}
-            >
-              <PiEye className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">
-                {isBehold ? 'Exit Scene' : 'Scene'}
-              </span>
-            </button>
-
-            {/* Ambient Soundscape Toggle (for silent reading with generative foley + chords) */}
-            <button
-              type="button"
-              data-testid="toggle-ambient-soundscape"
-              onClick={() => {
-                const nextState = !soundscapeActive;
-                setSoundscapeActive(nextState);
-                if (nextState) {
-                  ambientSound.triggerLiturgicalBell(
-                    currentChapter.sceneTheme,
-                    true
-                  );
-                }
-              }}
-              aria-pressed={soundscapeActive || isPlaying}
-              title={`4-Layer Generative Soundscape (${soundLayersSummary.foley} foley + ${soundLayersSummary.harmonicMode})`}
-              className={`min-h-[36px] px-2.5 py-1.5 rounded-lg border text-[0.68rem] tracking-[0.12em] uppercase flex items-center gap-1.5 transition-colors cursor-pointer ${
-                soundscapeActive || isPlaying
-                  ? 'border-[#D4A853]/45 bg-[#D4A853]/15 text-[#F5D78E]'
-                  : 'border-[#FAF6EE]/10 bg-black/40 text-[#FAF6EE]/65 hover:text-[#FAF6EE]'
-              }`}
-            >
-              <PiWaveform className="w-3.5 h-3.5 text-[#D4A853]" />
-              <span className="hidden lg:inline capitalize">
-                {soundLayersSummary.foley}
-              </span>
-            </button>
-
-            {/* Quiet Read (Default) / Chapter Slides Toggle */}
-            {!isBehold && (
+          {/* Right Zone: Consolidated Study & Stage Control Strip + Primary Narrator CTA */}
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center rounded-lg border border-[#FAF6EE]/10 bg-black/45 divide-x divide-[#FAF6EE]/10 overflow-hidden">
+              {/* Hebrew/Greek Root Word Lexicon Lens Toggle */}
               <button
                 type="button"
+                data-testid="toggle-lexicon-lens"
+                onClick={() => setLexiconLensActive((prev) => !prev)}
+                aria-pressed={lexiconLensActive}
+                title="Toggle inline Hebrew & Greek Root Word Lexicon Lens"
+                className={`min-h-[36px] px-2.5 py-1.5 text-[0.68rem] tracking-[0.12em] uppercase flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                  lexiconLensActive
+                    ? 'bg-[#D4A853]/15 text-[#F5D78E]'
+                    : 'text-[#FAF6EE]/65 hover:text-[#FAF6EE]'
+                }`}
+              >
+                <PiBookOpenText className="w-3.5 h-3.5 text-[#D4A853]" />
+                <span className="hidden md:inline">Lexicon</span>
+              </button>
+
+              {/* Cross-Reference Theological Timeline Button */}
+              <button
+                type="button"
+                data-testid="toggle-theological-timeline"
                 onClick={() =>
                   setStageState((prev) =>
                     transitionReaderStage(prev, {
-                      type: 'SET_MODE',
-                      mode: isScroll ? 'slides' : 'scroll',
+                      type: 'TOGGLE_DRAWER',
+                      drawer: 'timeline',
                     })
                   )
                 }
-                aria-label={
-                  isScroll
-                    ? 'Switch to single chapter view'
-                    : 'Switch to quiet scroll mode'
-                }
-                title={
-                  isScroll
-                    ? 'Switch to single chapter view'
-                    : 'Switch to quiet scroll mode'
-                }
-                className="min-h-[36px] px-2.5 py-1.5 rounded-lg border border-[#FAF6EE]/10 bg-black/40 text-[0.68rem] tracking-[0.12em] uppercase text-[#FAF6EE]/75 hover:text-[#FAF6EE] flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                title="Open Cross-Reference Theological Timeline across Scripture"
+                className={`min-h-[36px] px-2.5 py-1.5 text-[0.68rem] tracking-[0.12em] uppercase flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                  activeDrawer === 'timeline'
+                    ? 'bg-[#D4A853]/15 text-[#F5D78E]'
+                    : 'text-[#FAF6EE]/70 hover:text-[#FAF6EE]'
+                }`}
               >
-                {isScroll ? (
-                  <>
-                    <PiSlideshow className="w-3.5 h-3.5 text-[#D4A853]" />
-                    <span className="hidden sm:inline">Chapters</span>
-                  </>
-                ) : (
-                  <>
-                    <PiArticle className="w-3.5 h-3.5 text-[#D4A853]" />
-                    <span className="hidden sm:inline">Quiet Read</span>
-                  </>
+                <PiGitCommit className="w-3.5 h-3.5 text-[#D4A853]" />
+                <span className="hidden md:inline">Timeline</span>
+              </button>
+
+              {/* Liturgical Reflection Journal Button */}
+              <button
+                type="button"
+                data-testid="toggle-reflection-journal"
+                onClick={() =>
+                  setStageState((prev) =>
+                    transitionReaderStage(prev, {
+                      type: 'TOGGLE_DRAWER',
+                      drawer: 'reflect',
+                    })
+                  )
+                }
+                title="Open Liturgical Reflection Journal, Verse Highlights & Markdown Export"
+                className={`min-h-[36px] px-2.5 py-1.5 text-[0.68rem] tracking-[0.12em] uppercase flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                  activeDrawer === 'reflect'
+                    ? 'bg-[#D4A853]/15 text-[#F5D78E]'
+                    : 'text-[#FAF6EE]/70 hover:text-[#FAF6EE]'
+                }`}
+              >
+                <PiNotePencil className="w-3.5 h-3.5 text-[#D4A853]" />
+                <span className="hidden md:inline">Journal</span>
+                {episodeHighlights.length > 0 && (
+                  <span className="font-mono-tabular text-[0.62rem] text-[#D4A853]">
+                    ({episodeHighlights.length})
+                  </span>
                 )}
               </button>
-            )}
+
+              {/* Canvas Inspection Mode ("Contemplate Scene") Toggle */}
+              <button
+                type="button"
+                data-testid="toggle-canvas-inspection"
+                onClick={() =>
+                  setStageState((prev) =>
+                    transitionReaderStage(prev, { type: 'TOGGLE_BEHOLD' })
+                  )
+                }
+                aria-pressed={isBehold}
+                title={
+                  isBehold
+                    ? 'Return to Scripture text'
+                    : 'Contemplate Scene — Hide text and explore the interactive canvas'
+                }
+                className={`min-h-[36px] px-2.5 py-1.5 text-[0.68rem] tracking-[0.12em] uppercase flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                  isBehold
+                    ? 'bg-[#D4A853] text-[#0A0A0A] font-semibold'
+                    : 'text-[#FAF6EE]/75 hover:text-[#FAF6EE]'
+                }`}
+              >
+                <PiEye className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">
+                  {isBehold ? 'Exit Scene' : 'Scene'}
+                </span>
+              </button>
+
+              {/* Ambient Soundscape Toggle */}
+              <button
+                type="button"
+                data-testid="toggle-ambient-soundscape"
+                onClick={() => {
+                  const nextState = !soundscapeActive;
+                  setSoundscapeActive(nextState);
+                  if (nextState) {
+                    ambientSound.triggerLiturgicalBell(
+                      currentChapter.sceneTheme,
+                      true
+                    );
+                  }
+                }}
+                aria-pressed={soundscapeActive || isPlaying}
+                title={`4-Layer Generative Soundscape (${soundLayersSummary.foley} foley + ${soundLayersSummary.harmonicMode})`}
+                className={`min-h-[36px] px-2.5 py-1.5 text-[0.68rem] tracking-[0.12em] uppercase flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                  soundscapeActive || isPlaying
+                    ? 'bg-[#D4A853]/15 text-[#F5D78E]'
+                    : 'text-[#FAF6EE]/65 hover:text-[#FAF6EE]'
+                }`}
+              >
+                <PiWaveform className="w-3.5 h-3.5 text-[#D4A853]" />
+                <span className="hidden xl:inline capitalize">
+                  {soundLayersSummary.foley}
+                </span>
+              </button>
+
+              {/* Quiet Read (Default) / Chapter Slides Toggle */}
+              {!isBehold && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setStageState((prev) =>
+                      transitionReaderStage(prev, {
+                        type: 'SET_MODE',
+                        mode: isScroll ? 'slides' : 'scroll',
+                      })
+                    )
+                  }
+                  aria-label={
+                    isScroll
+                      ? 'Switch to single chapter view'
+                      : 'Switch to quiet scroll mode'
+                  }
+                  title={
+                    isScroll
+                      ? 'Switch to single chapter view'
+                      : 'Switch to quiet scroll mode'
+                  }
+                  className="min-h-[36px] px-2.5 py-1.5 text-[0.68rem] tracking-[0.12em] uppercase text-[#FAF6EE]/75 hover:text-[#FAF6EE] flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  {isScroll ? (
+                    <>
+                      <PiSlideshow className="w-3.5 h-3.5 text-[#D4A853]" />
+                      <span className="hidden sm:inline">Chapters</span>
+                    </>
+                  ) : (
+                    <>
+                      <PiArticle className="w-3.5 h-3.5 text-[#D4A853]" />
+                      <span className="hidden sm:inline">Quiet Read</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* Quick Jump to Split-Screen Visual Director Studio */}
+              {onOpenDirectorStudio && (
+                <button
+                  type="button"
+                  data-testid="open-director-studio-from-reader"
+                  onClick={() => onOpenDirectorStudio(episode.id, safeIndex)}
+                  title="Edit chapter shaders, physics & keyframes in Visual Director Studio"
+                  className="min-h-[36px] px-2.5 py-1.5 text-[0.68rem] tracking-[0.12em] uppercase text-[#FAF6EE]/70 hover:text-[#D4A853] flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  <PiSlidersHorizontal className="w-3.5 h-3.5 text-[#D4A853]" />
+                  <span className="hidden lg:inline">Director</span>
+                </button>
+              )}
+            </div>
 
             {/* Mute toggle when playing or soundscape active */}
             {(isPlaying || soundscapeActive) && (
@@ -944,7 +983,7 @@ export const EpisodeReaderView: React.FC<EpisodeReaderViewProps> = ({
                 type="button"
                 onClick={() => setIsMuted((m) => !m)}
                 aria-label={isMuted ? 'Unmute audio' : 'Mute audio'}
-                className="w-9 h-9 rounded-full border border-[#FAF6EE]/15 bg-black/40 flex items-center justify-center text-[#D4A853] shrink-0 cursor-pointer"
+                className="w-9 h-9 rounded-lg border border-[#FAF6EE]/15 bg-black/45 flex items-center justify-center text-[#D4A853] shrink-0 cursor-pointer"
               >
                 {isMuted ? (
                   <PiSpeakerSlash className="w-4 h-4" />
@@ -954,7 +993,7 @@ export const EpisodeReaderView: React.FC<EpisodeReaderViewProps> = ({
               </button>
             )}
 
-            {/* Primary Circular Gold Play/Pause Narrator Button */}
+            {/* Primary Gold Play/Pause Narrator Button */}
             <button
               type="button"
               onClick={() => {
@@ -962,7 +1001,7 @@ export const EpisodeReaderView: React.FC<EpisodeReaderViewProps> = ({
                 setIsPlaying((prev) => !prev);
               }}
               aria-label={isPlaying ? 'Pause narration' : 'Play narration'}
-              className="w-10 h-10 rounded-full bg-[#D4A853] hover:bg-[#E5BE6A] text-[#0A0A0A] flex items-center justify-center shadow-[0_8px_28px_rgba(212,168,83,0.3)] active:scale-95 transition-all shrink-0 cursor-pointer"
+              className="w-9 h-9 rounded-lg bg-[#D4A853] hover:bg-[#E5BE6A] text-[#0A0A0A] flex items-center justify-center active:scale-95 transition-all shrink-0 cursor-pointer"
             >
               {isPlaying ? (
                 <PiPauseFill className="w-4 h-4" />
@@ -983,12 +1022,11 @@ export const EpisodeReaderView: React.FC<EpisodeReaderViewProps> = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.4, ease: CINEMATIC_EASE }}
-              className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[min(92vw,680px)] rounded-2xl bg-[#080B10]/85 backdrop-blur-xl border border-[#D4A853]/35 p-4 sm:p-5 shadow-2xl"
+              className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[min(92vw,680px)] rounded-2xl bg-[#080B10]/88 backdrop-blur-xl border border-[#FAF6EE]/15 p-4 sm:p-5 shadow-2xl"
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 text-[0.65rem] tracking-[0.2em] uppercase text-[#D4A853] mb-1">
-                    <PiSparkle className="w-3.5 h-3.5 shrink-0" />
                     <span>
                       Chapter {formatChapterNumber(currentChapter.number)} ·{' '}
                       {currentAnimationConfig.label}
@@ -1154,14 +1192,13 @@ export const EpisodeReaderView: React.FC<EpisodeReaderViewProps> = ({
                               title={
                                 chVisualSpec.description || chVisualSpec.label
                               }
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[0.66rem] tracking-[0.12em] uppercase border transition-all cursor-pointer ${
+                              className={`text-[0.68rem] tracking-[0.14em] uppercase border-b pb-0.5 transition-colors cursor-pointer whitespace-nowrap ${
                                 isCurrentCh
-                                  ? 'bg-[#D4A853]/12 border-[#D4A853]/35 text-[#D4A853]'
-                                  : 'bg-black/25 border-[#FAF6EE]/10 text-[#FAF6EE]/45 hover:text-[#FAF6EE]/80'
+                                  ? 'border-[#D4A853]/60 text-[#D4A853]'
+                                  : 'border-transparent text-[#FAF6EE]/45 hover:text-[#FAF6EE]/80'
                               }`}
                             >
-                              <PiSparkle className="w-3 h-3 shrink-0" />
-                              <span>{chVisualSpec.label}</span>
+                              Scene: {chVisualSpec.label}
                             </button>
                           </div>
 
@@ -1248,8 +1285,12 @@ export const EpisodeReaderView: React.FC<EpisodeReaderViewProps> = ({
                               return (
                                 <div
                                   key={pIdx}
-                                  className={`group relative rounded-r-xl transition-all duration-500 ${
-                                    hlStyle ? `${hlStyle.bg} py-2 pr-3` : ''
+                                  className={`group relative rounded-lg transition-all duration-300 ${
+                                    isParaActive
+                                      ? 'bg-[#D4A853]/[0.08] border border-[#D4A853]/30 px-4 py-2.5 -mx-4'
+                                      : hlStyle
+                                        ? `${hlStyle.bg} border ${hlStyle.border} px-4 py-2.5 -mx-4`
+                                        : ''
                                   }`}
                                 >
                                   <p
@@ -1257,19 +1298,17 @@ export const EpisodeReaderView: React.FC<EpisodeReaderViewProps> = ({
                                     onClick={() =>
                                       handleSelectBlock(chIdx, paraId)
                                     }
-                                    className={`${proseClasses} font-medium transition-all duration-500 text-balance cursor-pointer pl-3 border-l-2 ${
-                                      isParaActive
-                                        ? 'border-[#D4A853] text-[#FAF6EE]'
-                                        : hlStyle
-                                          ? `${hlStyle.border} text-[#FAF6EE]`
-                                          : 'border-transparent text-[#FAF6EE]/82 hover:text-[#FAF6EE]'
+                                    className={`${proseClasses} font-medium transition-colors duration-300 text-balance cursor-pointer ${
+                                      isParaActive || hlStyle
+                                        ? 'text-[#FAF6EE]'
+                                        : 'text-[#FAF6EE]/84 hover:text-[#FAF6EE]'
                                     }`}
                                   >
                                     {renderInteractiveParagraphContent(p)}
                                   </p>
 
                                   {hlRecord?.personalNote && (
-                                    <p className="mt-1.5 pl-3 text-xs italic text-[#D4A853]/90 font-serif-editorial">
+                                    <p className="mt-1.5 text-xs italic text-[#D4A853]/90 font-serif-editorial">
                                       Marginalia: “{hlRecord.personalNote}”
                                     </p>
                                   )}
@@ -1314,7 +1353,7 @@ export const EpisodeReaderView: React.FC<EpisodeReaderViewProps> = ({
                           </div>
 
                           {/* Chapter Reflect & Study Actions */}
-                          <div className="mt-6 pl-3 flex flex-wrap items-center gap-2.5">
+                          <div className="mt-6 flex flex-wrap items-center gap-2.5">
                             <button
                               type="button"
                               onClick={() => {
@@ -1329,13 +1368,9 @@ export const EpisodeReaderView: React.FC<EpisodeReaderViewProps> = ({
                                   })
                                 );
                               }}
-                              className="inline-flex items-center gap-2 px-4 min-h-[38px] py-1.5 rounded-full text-[0.8rem] transition-all duration-300 cursor-pointer group"
-                              style={{
-                                backgroundColor: `${episode.accentColor}18`,
-                                color: episode.accentColor,
-                              }}
+                              className="inline-flex items-center gap-2 px-4 min-h-[38px] py-1.5 rounded-lg border border-[#FAF6EE]/15 bg-black/35 hover:border-[#D4A853]/50 text-[0.78rem] text-[#FAF6EE]/85 hover:text-[#D4A853] transition-colors cursor-pointer"
                             >
-                              <PiSparkle className="w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-110" />
+                              <PiNotePencil className="w-3.5 h-3.5 text-[#D4A853]" />
                               <span>Reflect &amp; Journal</span>
                             </button>
                           </div>
@@ -1412,10 +1447,9 @@ export const EpisodeReaderView: React.FC<EpisodeReaderViewProps> = ({
                             currentAnimationConfig.description ||
                             currentAnimationConfig.label
                           }
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[0.66rem] tracking-[0.12em] uppercase bg-[#D4A853]/12 border border-[#D4A853]/35 text-[#D4A853] cursor-pointer"
+                          className="text-[0.68rem] tracking-[0.14em] uppercase border-b border-[#D4A853]/60 pb-0.5 text-[#D4A853] cursor-pointer whitespace-nowrap"
                         >
-                          <PiSparkle className="w-3 h-3 shrink-0" />
-                          <span>{currentAnimationConfig.label}</span>
+                          Scene: {currentAnimationConfig.label}
                         </button>
                       </div>
 
@@ -1507,19 +1541,21 @@ export const EpisodeReaderView: React.FC<EpisodeReaderViewProps> = ({
                           return (
                             <div
                               key={idx}
-                              className={`group relative mb-6 last:mb-0 rounded-r-xl ${
-                                hlStyle ? `${hlStyle.bg} py-2 pr-3` : ''
+                              className={`group relative mb-6 last:mb-0 rounded-lg transition-all duration-300 ${
+                                isActivePara
+                                  ? 'bg-[#D4A853]/[0.08] border border-[#D4A853]/30 px-4 py-2.5 -mx-4'
+                                  : hlStyle
+                                    ? `${hlStyle.bg} border ${hlStyle.border} px-4 py-2.5 -mx-4`
+                                    : ''
                               }`}
                             >
                               <p
                                 data-narration-id={paraId}
                                 onClick={() => handleSelectBlock(safeIndex, paraId)}
-                                className={`${proseClasses} font-medium transition-all duration-500 text-balance cursor-pointer pl-3 border-l-2 ${
-                                  isActivePara
-                                    ? 'border-[#D4A853] text-[#FAF6EE]'
-                                    : hlStyle
-                                      ? `${hlStyle.border} text-[#FAF6EE]`
-                                      : 'border-transparent text-[#FAF6EE]/85 hover:text-[#FAF6EE]'
+                                className={`${proseClasses} font-medium transition-colors duration-300 text-balance cursor-pointer ${
+                                  isActivePara || hlStyle
+                                    ? 'text-[#FAF6EE]'
+                                    : 'text-[#FAF6EE]/85 hover:text-[#FAF6EE]'
                                 }`}
                               >
                                 {renderInteractiveParagraphContent(para)}
@@ -1558,7 +1594,7 @@ export const EpisodeReaderView: React.FC<EpisodeReaderViewProps> = ({
                       </div>
 
                       {/* Single Quiet Reflect Button */}
-                      <div className="mt-6 pl-3">
+                      <div className="mt-6">
                         <button
                           type="button"
                           onClick={() =>
@@ -1569,13 +1605,9 @@ export const EpisodeReaderView: React.FC<EpisodeReaderViewProps> = ({
                               })
                             )
                           }
-                          className="inline-flex items-center gap-2 mt-4 px-5 min-h-[44px] py-2 rounded-full text-[0.85rem] transition-all duration-300 cursor-pointer group"
-                          style={{
-                            backgroundColor: `${episode.accentColor}18`,
-                            color: episode.accentColor,
-                          }}
+                          className="inline-flex items-center gap-2 mt-4 px-5 min-h-[42px] py-2 rounded-lg border border-[#FAF6EE]/15 bg-black/35 hover:border-[#D4A853]/50 text-[0.82rem] text-[#FAF6EE]/85 hover:text-[#D4A853] transition-colors cursor-pointer"
                         >
-                          <PiSparkle className="w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-110" />
+                          <PiNotePencil className="w-3.5 h-3.5 text-[#D4A853]" />
                           <span>Reflect &amp; Journal</span>
                         </button>
                       </div>
@@ -1921,12 +1953,8 @@ export const EpisodeReaderView: React.FC<EpisodeReaderViewProps> = ({
                         {thread.title}
                       </h3>
                       <span
-                        className="text-xs font-serif-editorial px-2.5 py-0.5 rounded-full border"
-                        style={{
-                          color: thread.accentColor,
-                          borderColor: `${thread.accentColor}40`,
-                          backgroundColor: `${thread.accentColor}12`,
-                        }}
+                        className="text-sm font-serif-editorial"
+                        style={{ color: thread.accentColor }}
                       >
                         {thread.hebrewAnchor}
                       </span>
