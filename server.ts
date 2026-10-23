@@ -8,19 +8,28 @@ import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+function sanitizeTextForNeuralTts(raw: string): string {
+  return raw
+    .replace(/&/g, ' and ')
+    .replace(/[<>]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 /**
  * Synthesizes warm, deep, natural baritone narration using Edge Neural TTS
  * ('en-US-ChristopherNeural' at +6% brisk pace and -8Hz resonant baritone pitch)
- * so every chapter of every episode uses the exact same speaker with zero 10-req/day quota cutoff.
+ * so every chapter of every episode uses the exact same speaker with zero quota cutoff.
  */
 async function synthesizeWithEdgeBaritone(text: string): Promise<string> {
+  const cleanText = sanitizeTextForNeuralTts(text);
   const tts = new MsEdgeTTS();
   try {
     await tts.setMetadata(
       'en-US-ChristopherNeural',
       OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3
     );
-    const { audioStream } = tts.toStream(text, {
+    const { audioStream } = tts.toStream(cleanText, {
       rate: '+6%',
       pitch: '-8Hz',
     });
@@ -48,10 +57,14 @@ async function startServer() {
 
   app.use(express.json({ limit: '1mb' }));
 
-  // Server-side in-memory TTS cache so repeated or prefetched blocks resolve instantaneously
+  // Server-side in-memory TTS cache and in-flight deduplication map
   const ttsMemoryCache = new Map<
     string,
     { audioBase64: string; mimeType: string }
+  >();
+  const inflightTts = new Map<
+    string,
+    Promise<{ audioBase64: string; mimeType: string } | null>
   >();
 
   // Server-side unified neural baritone TTS route
@@ -69,27 +82,47 @@ async function startServer() {
       return;
     }
 
-    // 1. Primary Unlimited Neural Baritone ('en-US-ChristopherNeural') with automatic retry
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const audioBase64 = await synthesizeWithEdgeBaritone(text);
-        const payload = {
-          audioBase64,
-          mimeType: 'audio/mpeg',
-        };
-        if (ttsMemoryCache.size > 250) {
-          const firstKey = ttsMemoryCache.keys().next().value;
-          if (firstKey) ttsMemoryCache.delete(firstKey);
+    let synthesisPromise = inflightTts.get(text);
+    if (!synthesisPromise) {
+      synthesisPromise = (async () => {
+        // 1. Primary Unlimited Neural Baritone ('en-US-ChristopherNeural') with automatic retry + backoff
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            if (attempt > 0) {
+              await new Promise((r) => setTimeout(r, attempt * 220));
+            }
+            const audioBase64 = await synthesizeWithEdgeBaritone(text);
+            const payload = {
+              audioBase64,
+              mimeType: 'audio/mpeg',
+            };
+            if (ttsMemoryCache.size > 600) {
+              const firstKey = ttsMemoryCache.keys().next().value;
+              if (firstKey) ttsMemoryCache.delete(firstKey);
+            }
+            ttsMemoryCache.set(text, payload);
+            return payload;
+          } catch {
+            // Retry with backoff or fall through to secondary Gemini neural TTS
+          }
         }
-        ttsMemoryCache.set(text, payload);
-        res.json(payload);
-        return;
-      } catch {
-        // Retry once or fall through to secondary Gemini TTS
-      }
+        return null;
+      })();
+
+      inflightTts.set(text, synthesisPromise);
     }
 
-    // 2. Secondary Server-Side Fallback: Gemini TTS ('Charon')
+    try {
+      const neuralPayload = await synthesisPromise;
+      if (neuralPayload) {
+        res.json(neuralPayload);
+        return;
+      }
+    } finally {
+      inflightTts.delete(text);
+    }
+
+    // 2. Secondary Server-Side AI Fallback: Gemini Neural TTS ('Charon')
     const apiKey = process.env.GEMINI_API_KEY;
     if (
       !apiKey ||
@@ -97,7 +130,7 @@ async function startServer() {
       apiKey.trim().length < 10
     ) {
       res.status(503).json({
-        error: 'Neural TTS unavailable; using client baritone narrator.',
+        error: 'AI Neural TTS temporarily unavailable.',
       });
       return;
     }

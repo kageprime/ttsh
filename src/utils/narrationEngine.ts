@@ -14,49 +14,6 @@ interface CachedAudioPayload {
   dataUrl: string;
 }
 
-/**
- * Selects a single deep, natural male baritone voice available in the browser
- * when offline, locking onto that exact voice so the speaker never changes.
- */
-function selectDeepBaritoneVoice(): SpeechSynthesisVoice | null {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-    return null;
-  }
-  const voices = window.speechSynthesis.getVoices();
-  if (!voices || voices.length === 0) return null;
-
-  const englishVoices = voices.filter((v) =>
-    /^en(-|_|$)/i.test(v.lang || '')
-  );
-  const pool = englishVoices.length > 0 ? englishVoices : voices;
-
-  const preferredPatterns = [
-    /Christopher/i,
-    /Guy/i,
-    /Eric/i,
-    /Roger/i,
-    /Steffan/i,
-    /Google UK English Male/i,
-    /Google US English/i,
-    /Aaron/i,
-    /Arthur/i,
-    /Daniel/i,
-    /Alex/i,
-    /Fred/i,
-    /David/i,
-    /Mark/i,
-    /Matthew/i,
-    /Male/i,
-  ];
-
-  for (const pattern of preferredPatterns) {
-    const match = pool.find((v) => pattern.test(v.name));
-    if (match) return match;
-  }
-
-  return pool[0] || null;
-}
-
 function base64ToBytes(base64: string): Uint8Array {
   const binary = window.atob(base64);
   const bytes = new Uint8Array(binary.length);
@@ -70,27 +27,18 @@ class NarrationDirector {
   private audioCtx: AudioContext | null = null;
   private activeSourceNode: AudioBufferSourceNode | null = null;
   private audioEl: HTMLAudioElement | null = null;
-  private activeUtterance: SpeechSynthesisUtterance | null = null;
   private timers: number[] = [];
   private currentRunId = 0;
-  private lockedWebVoice: SpeechSynthesisVoice | null = null;
+  private prefetchGeneration = 0;
   private audioCache = new Map<string, CachedAudioPayload>();
-  private inflightRequests = new Map<string, Promise<CachedAudioPayload | null>>();
-
-  constructor() {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      this.lockedWebVoice = selectDeepBaritoneVoice();
-      window.speechSynthesis.onvoiceschanged = () => {
-        if (!this.lockedWebVoice) {
-          this.lockedWebVoice = selectDeepBaritoneVoice();
-        }
-      };
-    }
-  }
+  private inflightRequests = new Map<
+    string,
+    Promise<CachedAudioPayload | null>
+  >();
 
   /**
    * Unlocks the persistent Web Audio API AudioContext and HTMLAudioElement on user click
-   * so that audio playback across all chapters (Chapter 1 -> 2 -> 3 ... -> 12) is never
+   * so that AI neural audio playback across all chapters (Chapter 1 -> 2 -> 3 ... -> 12) is never
    * blocked by browser autoplay restrictions after async fetches or sound-cue pauses.
    */
   public unlockAudio(): void {
@@ -138,22 +86,11 @@ class NarrationDirector {
         // Ignore
       }
     }
-
-    this.activeUtterance = null;
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      try {
-        if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
-          window.speechSynthesis.cancel();
-        }
-      } catch {
-        // Ignore
-      }
-    }
   }
 
   /**
-   * Sequentially pre-fetches neural TTS audio for upcoming chapter blocks in the background
-   * so that when playback advances from block to block and chapter to chapter, the single
+   * Sequentially pre-fetches AI neural TTS audio for upcoming chapter blocks in the background
+   * so that when playback advances from block to block and chapter to chapter, the AI
    * neural baritone voice plays immediately with zero latency.
    */
   public prefetchChapterBlocks(blocks: readonly NarrationBlock[]): void {
@@ -163,12 +100,16 @@ class NarrationDirector {
 
     if (isHeadless) return;
 
+    this.prefetchGeneration += 1;
+    const generation = this.prefetchGeneration;
+
     const spokenBlocks = blocks.filter(
       (b) => b.kind !== 'sound-cue' && b.spokenText.trim().length > 0
     );
 
     void (async () => {
       for (const block of spokenBlocks) {
+        if (this.prefetchGeneration !== generation) return;
         await this.fetchServerTts(block);
       }
     })();
@@ -188,12 +129,12 @@ class NarrationDirector {
   }
 
   /**
-   * Plays a single NarrationBlock using strictly ONE consistent speaker across all chapters:
+   * Plays a single NarrationBlock using strictly the AI neural baritone voice across all chapters:
    * - If the block is a `sound-cue`, synthesizes the acoustic sound cue and holds silence
    *   for the cue duration so the listener hears the wind/hum/water before the voice enters.
-   * - If the block is a `hebrew-quote` or `paragraph`, decodes and plays the neural baritone
-   *   audio via the unlocked Web Audio API AudioContext so every chapter in the episode plays
-   *   reliably and auto-scrolls only after the voice finishes speaking.
+   * - If the block is a `hebrew-quote` or `paragraph`, decodes and plays the AI neural baritone
+   *   audio via the unlocked Web Audio API AudioContext so every block uses the exact same AI voice
+   *   and never falls back to browser robotic speechSynthesis.
    */
   public async playBlock({
     block,
@@ -229,7 +170,7 @@ class NarrationDirector {
       return;
     }
 
-    if (muted) {
+    if (muted || isHeadless) {
       this.schedule(() => {
         if (this.currentRunId === runId) {
           onComplete();
@@ -238,36 +179,39 @@ class NarrationDirector {
       return;
     }
 
-    // 2. Single-Speaker Neural Baritone TTS (/api/tts) across all chapters
-    if (!isHeadless) {
-      const payload = await this.fetchServerTts(block);
-      if (this.currentRunId !== runId) return;
+    // 2. Exclusive AI Neural Baritone TTS (/api/tts) across all blocks and chapters
+    const payload = await this.fetchServerTts(block);
+    if (this.currentRunId !== runId) return;
 
-      if (payload) {
-        const playedViaWebAudio = await this.playViaWebAudio(
-          payload,
-          block,
-          runId,
-          onComplete
-        );
-        if (playedViaWebAudio || this.currentRunId !== runId) {
-          return;
-        }
+    if (payload) {
+      const playedViaWebAudio = await this.playViaWebAudio(
+        payload,
+        block,
+        runId,
+        onComplete
+      );
+      if (playedViaWebAudio || this.currentRunId !== runId) {
+        return;
+      }
 
-        const playedViaElement = await this.playViaAudioElement(
-          payload.dataUrl,
-          block,
-          runId,
-          onComplete
-        );
-        if (playedViaElement || this.currentRunId !== runId) {
-          return;
-        }
+      const playedViaElement = await this.playViaAudioElement(
+        payload.dataUrl,
+        block,
+        runId,
+        onComplete
+      );
+      if (playedViaElement || this.currentRunId !== runId) {
+        return;
       }
     }
 
-    // 3. Offline / Headless Fallback: Single Locked Web Speech Synthesizer
-    this.playWithSingleLockedWebSpeech(block, runId, timeScale, onComplete);
+    // If audio output device is unavailable or unreachable after retries, advance silently
+    // after reading pause—never invoke default robotic browser TTS.
+    this.schedule(() => {
+      if (this.currentRunId === runId) {
+        onComplete();
+      }
+    }, Math.max(1100, Math.round(block.estimatedDurationMs * timeScale)));
   }
 
   private async playViaWebAudio(
@@ -405,10 +349,13 @@ class NarrationDirector {
     }
 
     const requestPromise = (async (): Promise<CachedAudioPayload | null> => {
-      for (let attempt = 0; attempt < 2; attempt++) {
+      for (let attempt = 0; attempt < 3; attempt++) {
         try {
+          if (attempt > 0) {
+            await new Promise((r) => setTimeout(r, attempt * 250));
+          }
           const controller = new AbortController();
-          const timeout = window.setTimeout(() => controller.abort(), 12000);
+          const timeout = window.setTimeout(() => controller.abort(), 15000);
           const res = await fetch('/api/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -437,7 +384,7 @@ class NarrationDirector {
           this.audioCache.set(textKey, payload);
           return payload;
         } catch {
-          // Retry once
+          // Retry with backoff
         }
       }
       return null;
@@ -449,80 +396,6 @@ class NarrationDirector {
     } finally {
       this.inflightRequests.delete(textKey);
     }
-  }
-
-  private playWithSingleLockedWebSpeech(
-    block: NarrationBlock,
-    runId: number,
-    timeScale: number,
-    onComplete: () => void
-  ) {
-    const hasSpeech =
-      typeof window !== 'undefined' &&
-      'speechSynthesis' in window &&
-      typeof SpeechSynthesisUtterance !== 'undefined';
-
-    const totalFallbackMs = Math.max(
-      1100,
-      Math.round(block.estimatedDurationMs * timeScale)
-    );
-
-    if (!hasSpeech) {
-      this.schedule(() => {
-        if (this.currentRunId === runId) onComplete();
-      }, totalFallbackMs);
-      return;
-    }
-
-    if (!this.lockedWebVoice) {
-      this.lockedWebVoice = selectDeepBaritoneVoice();
-    }
-
-    let completed = false;
-    const completeOnce = () => {
-      if (completed || this.currentRunId !== runId) return;
-      completed = true;
-      this.activeUtterance = null;
-      onComplete();
-    };
-
-    // Deterministic safety timer in case speechSynthesis hangs in headless browsers
-    this.schedule(completeOnce, totalFallbackMs + 1500);
-
-    this.schedule(() => {
-      if (this.currentRunId !== runId || completed) return;
-      try {
-        if (window.speechSynthesis.paused) {
-          window.speechSynthesis.resume();
-        }
-        const utterance = new SpeechSynthesisUtterance(block.spokenText);
-        // Keep strong reference so V8 GC never collects the utterance mid-speech
-        this.activeUtterance = utterance;
-        if (this.lockedWebVoice) {
-          utterance.voice = this.lockedWebVoice;
-        }
-        utterance.rate = block.speechRate;
-        utterance.pitch = block.speechPitch;
-        utterance.volume = 0.95;
-
-        utterance.onend = () => {
-          if (this.currentRunId !== runId || completed) return;
-          this.schedule(
-            completeOnce,
-            Math.round(block.postPauseMs * timeScale)
-          );
-        };
-
-        utterance.onerror = () => {
-          if (this.currentRunId !== runId || completed) return;
-          this.schedule(completeOnce, 250);
-        };
-
-        window.speechSynthesis.speak(utterance);
-      } catch {
-        this.schedule(completeOnce, totalFallbackMs);
-      }
-    }, Math.round(block.prePauseMs * timeScale));
   }
 }
 

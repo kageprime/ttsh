@@ -225,7 +225,7 @@ export default function App() {
             onSaveReflection={handleSaveReflection}
             onMarkChapterRead={handleMarkChapterRead}
             onBackToEpisodes={() => handleNavigate('episodes')}
-            onSelectEpisode={(epId) => handleOpenEpisode(epId, false, 0)}
+            onSelectEpisode={(epId, chIdx = 0) => handleOpenEpisode(epId, false, chIdx)}
           />
         )}
       </main>

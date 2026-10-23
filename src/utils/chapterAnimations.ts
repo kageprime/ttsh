@@ -1,5 +1,12 @@
 import { ChapterVisualMotif } from './storybookLogic';
 
+export interface CanvasPointerRipple {
+  readonly x: number;
+  readonly y: number;
+  readonly birthSec: number;
+  readonly strength: number;
+}
+
 export interface ChapterAnimationRenderParams {
   ctx: CanvasRenderingContext2D;
   width: number;
@@ -11,6 +18,48 @@ export interface ChapterAnimationRenderParams {
   windIntensity: number;
   lightBloom: number;
   pointer: { x: number; y: number };
+  pointerVelocity?: { vx: number; vy: number };
+  ripples?: readonly CanvasPointerRipple[];
+}
+
+/**
+ * Renders delicate golden-celestial acoustic ripples where the reader touches or drags the canvas.
+ */
+export function renderInteractivePointerRipples(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  elapsed: number,
+  ripples: readonly CanvasPointerRipple[]
+): void {
+  if (!ripples || ripples.length === 0) return;
+
+  ctx.save();
+  for (let i = 0; i < ripples.length; i++) {
+    const r = ripples[i];
+    const age = elapsed - r.birthSec;
+    if (age < 0 || age > 2.4) continue;
+    const progress = age / 2.4;
+    const fade = Math.pow(1 - progress, 1.8) * r.strength;
+    const px = r.x * width;
+    const py = r.y * height;
+    const radius = 10 + progress * Math.min(width, height) * 0.22;
+
+    ctx.strokeStyle = `rgba(212, 168, 83, ${fade * 0.48})`;
+    ctx.lineWidth = 1.6 * (1 - progress * 0.5);
+    ctx.beginPath();
+    ctx.arc(px, py, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    if (progress < 0.7) {
+      ctx.strokeStyle = `rgba(254, 243, 199, ${fade * 0.28})`;
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.arc(px, py, radius * 0.58, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
 }
 
 /**
@@ -159,16 +208,25 @@ export function renderChapterAnimationOverlay({
   motif,
   alpha,
   surge,
-  windIntensity,
+  windIntensity: baseWindIntensity,
   lightBloom,
+  pointer,
+  pointerVelocity,
 }: ChapterAnimationRenderParams): void {
   if (alpha <= 0.01) return;
 
   ctx.save();
   ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
 
-  const cx = width * 0.5;
-  const cy = height * 0.5;
+  const ptrDx = (pointer?.x ?? 0.5) - 0.5;
+  const ptrDy = (pointer?.y ?? 0.5) - 0.5;
+  const velMag = pointerVelocity
+    ? Math.min(1.2, Math.hypot(pointerVelocity.vx, pointerVelocity.vy) * 18)
+    : 0;
+
+  const cx = width * 0.5 + ptrDx * 26;
+  const cy = height * 0.5 + ptrDy * 18;
+  const windIntensity = Math.min(1.4, baseWindIntensity + velMag * 0.45);
   const t = elapsed;
 
   switch (motif) {

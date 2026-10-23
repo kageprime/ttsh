@@ -30,7 +30,12 @@ export const DEFAULT_READER_SETTINGS = {
   autoAdvance: true,
 } as const satisfies ReaderSettings;
 
-export type StudyDrawerKind = 'none' | 'reflect' | 'scripture' | 'lexicon';
+export type StudyDrawerKind =
+  | 'none'
+  | 'reflect'
+  | 'scripture'
+  | 'lexicon'
+  | 'timeline';
 
 /**
  * Discriminated union modeling the reader's visual stage state.
@@ -39,7 +44,7 @@ export type StudyDrawerKind = 'none' | 'reflect' | 'scripture' | 'lexicon';
 export type ReaderStageState =
   | { readonly kind: 'scroll'; readonly activeDrawer?: StudyDrawerKind }
   | { readonly kind: 'slides'; readonly activeDrawer: StudyDrawerKind }
-  | { readonly kind: 'behold' };
+  | { readonly kind: 'behold'; readonly returnMode?: 'scroll' | 'slides' };
 
 export type ReaderStageEvent =
   | { readonly type: 'SET_MODE'; readonly mode: 'slides' | 'scroll' }
@@ -65,15 +70,21 @@ export function transitionReaderStage(
 
     case 'TOGGLE_BEHOLD':
       if (state.kind === 'behold') {
-        return { kind: 'scroll', activeDrawer: 'none' };
+        const targetMode = state.returnMode || 'scroll';
+        return targetMode === 'slides'
+          ? { kind: 'slides', activeDrawer: 'none' }
+          : { kind: 'scroll', activeDrawer: 'none' };
       }
-      return { kind: 'behold' };
+      return { kind: 'behold', returnMode: state.kind };
 
     case 'TOGGLE_DRAWER': {
       const currentDrawer =
         state.kind === 'behold' ? 'none' : state.activeDrawer ?? 'none';
       const nextDrawer = currentDrawer === event.drawer ? 'none' : event.drawer;
       if (state.kind === 'scroll') {
+        return { kind: 'scroll', activeDrawer: nextDrawer };
+      }
+      if (state.kind === 'behold') {
         return { kind: 'scroll', activeDrawer: nextDrawer };
       }
       return {
@@ -85,6 +96,9 @@ export function transitionReaderStage(
     case 'RESET_FOR_CHAPTER':
       if (state.kind === 'scroll') {
         return { kind: 'scroll', activeDrawer: 'none' };
+      }
+      if (state.kind === 'behold') {
+        return state;
       }
       return { kind: 'slides', activeDrawer: 'none' };
   }

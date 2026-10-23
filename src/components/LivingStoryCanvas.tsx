@@ -10,7 +10,11 @@ import {
   computeTextDrivenShaderTargets,
   lerpShaderState,
 } from '../utils/storybookLogic';
-import { renderChapterAnimationOverlay } from '../utils/chapterAnimations';
+import {
+  CanvasPointerRipple,
+  renderChapterAnimationOverlay,
+  renderInteractivePointerRipples,
+} from '../utils/chapterAnimations';
 
 export interface LivingStoryCanvasProps {
   theme: SceneTheme | 'hero-waterfall';
@@ -18,6 +22,10 @@ export interface LivingStoryCanvasProps {
   episodeId?: string;
   chapterNumber?: number;
   animationConfig?: ChapterAnimationConfig;
+  nextTheme?: SceneTheme;
+  nextChapterNumber?: number;
+  nextAnimationConfig?: ChapterAnimationConfig;
+  chapterScrollProgress?: number;
   backgroundImageUrl?: string;
   activeText?: string;
   isSoundCueActive?: boolean;
@@ -25,6 +33,8 @@ export interface LivingStoryCanvasProps {
   readingProgress?: number;
   highContrast?: boolean;
   interactive?: boolean;
+  inspectionMode?: boolean;
+  onPointerAudioRipple?: (normX: number, normY: number, velocity: number) => void;
   className?: string;
 }
 
@@ -408,20 +418,29 @@ export const LivingStoryCanvas: React.FC<LivingStoryCanvasProps> = ({
   episodeId,
   chapterNumber,
   animationConfig,
+  nextTheme,
+  nextChapterNumber,
+  nextAnimationConfig,
+  chapterScrollProgress = 0,
   backgroundImageUrl,
   activeText = '',
   isSoundCueActive = false,
   surgeCount = 0,
   highContrast = false,
   interactive = true,
+  inspectionMode = false,
+  onPointerAudioRipple,
   className = '',
 }) => {
   const glCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const moteCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const pointerRef = useRef<{ x: number; y: number }>({ x: 0.5, y: 0.5 });
+  const pointerVelocityRef = useRef<{ vx: number; vy: number }>({ vx: 0, vy: 0 });
+  const ripplesRef = useRef<CanvasPointerRipple[]>([]);
+  const elapsedRef = useRef<number>(4.2);
   const surgeEnergyRef = useRef<number>(0);
 
-  const liveTargetState = computeTextDrivenShaderTargets(
+  const primaryTargetState = computeTextDrivenShaderTargets(
     theme,
     canvasMode,
     activeText,
@@ -430,17 +449,46 @@ export const LivingStoryCanvas: React.FC<LivingStoryCanvasProps> = ({
     chapterNumber,
     animationConfig
   );
+
+  const upcomingTargetState =
+    nextAnimationConfig || typeof nextChapterNumber === 'number'
+      ? computeTextDrivenShaderTargets(
+          nextTheme || theme,
+          canvasMode,
+          '',
+          false,
+          episodeId,
+          nextChapterNumber,
+          nextAnimationConfig
+        )
+      : null;
+
+  // Compute continuous scroll-linked morph factor (0..0.48 as reader approaches final 28% of chapter)
+  const scrollMorphFactor =
+    upcomingTargetState && chapterScrollProgress > 0.72
+      ? Math.min(0.48, ((chapterScrollProgress - 0.72) / 0.28) * 0.48)
+      : 0;
+
+  const liveTargetState =
+    upcomingTargetState && scrollMorphFactor > 0.01
+      ? lerpShaderState(primaryTargetState, upcomingTargetState, scrollMorphFactor)
+      : primaryTargetState;
+
   const currentStateRef = useRef<TextDrivenShaderState>(liveTargetState);
   const targetStateRef = useRef<TextDrivenShaderState>(liveTargetState);
   const moteColorsRef = useRef<string[]>(getMoteColorsForTheme(theme));
 
-  // Track chapter motif cross-dissolves so each chapter's animated construction blends smoothly
-  const activeMotifRef = useRef<ChapterVisualMotif>(liveTargetState.motif);
+  // Track chapter motif cross-dissolves + continuous scroll pre-morphing
+  const activeMotifRef = useRef<ChapterVisualMotif>(primaryTargetState.motif);
   const prevMotifRef = useRef<ChapterVisualMotif | null>(null);
+  const nextMotifRef = useRef<ChapterVisualMotif | null>(
+    upcomingTargetState ? upcomingTargetState.motif : null
+  );
+  const scrollMorphRef = useRef<number>(scrollMorphFactor);
   const motifBlendRef = useRef<number>(1.0);
 
   useEffect(() => {
-    const nextTarget = computeTextDrivenShaderTargets(
+    const primaryNext = computeTextDrivenShaderTargets(
       theme,
       canvasMode,
       activeText,
@@ -449,12 +497,40 @@ export const LivingStoryCanvas: React.FC<LivingStoryCanvasProps> = ({
       chapterNumber,
       animationConfig
     );
-    if (nextTarget.motif !== activeMotifRef.current) {
+    const upcomingNext =
+      nextAnimationConfig || typeof nextChapterNumber === 'number'
+        ? computeTextDrivenShaderTargets(
+            nextTheme || theme,
+            canvasMode,
+            '',
+            false,
+            episodeId,
+            nextChapterNumber,
+            nextAnimationConfig
+          )
+        : null;
+
+    const morphAmt =
+      upcomingNext && chapterScrollProgress > 0.72
+        ? Math.min(0.48, ((chapterScrollProgress - 0.72) / 0.28) * 0.48)
+        : 0;
+
+    if (primaryNext.motif !== activeMotifRef.current) {
       prevMotifRef.current = activeMotifRef.current;
-      activeMotifRef.current = nextTarget.motif;
+      activeMotifRef.current = primaryNext.motif;
       motifBlendRef.current = 0.0;
     }
-    targetStateRef.current = nextTarget;
+
+    nextMotifRef.current =
+      upcomingNext && upcomingNext.motif !== primaryNext.motif
+        ? upcomingNext.motif
+        : null;
+    scrollMorphRef.current = morphAmt;
+
+    targetStateRef.current =
+      upcomingNext && morphAmt > 0.01
+        ? lerpShaderState(primaryNext, upcomingNext, morphAmt)
+        : primaryNext;
     moteColorsRef.current = getMoteColorsForTheme(theme);
   }, [
     theme,
@@ -464,6 +540,10 @@ export const LivingStoryCanvas: React.FC<LivingStoryCanvasProps> = ({
     episodeId,
     chapterNumber,
     animationConfig,
+    nextTheme,
+    nextChapterNumber,
+    nextAnimationConfig,
+    chapterScrollProgress,
   ]);
 
   useEffect(() => {
@@ -590,7 +670,7 @@ export const LivingStoryCanvas: React.FC<LivingStoryCanvasProps> = ({
     resize();
     window.addEventListener('resize', resize);
 
-    const moteCount = isHeadless ? 14 : width < 640 ? 18 : 28;
+    const moteCount = isHeadless ? 14 : width < 640 ? 18 : 30;
     const motes: SoftMote[] = Array.from({ length: moteCount }, () =>
       createMote(width, height, moteColorsRef.current)
     );
@@ -614,7 +694,19 @@ export const LivingStoryCanvas: React.FC<LivingStoryCanvasProps> = ({
       lastFrameMs = nowMs;
 
       const elapsed = (nowMs - startMs) * 0.001 + 4.2;
+      elapsedRef.current = elapsed;
       surgeEnergyRef.current = Math.max(0, surgeEnergyRef.current * 0.96);
+      pointerVelocityRef.current = {
+        vx: pointerVelocityRef.current.vx * 0.9,
+        vy: pointerVelocityRef.current.vy * 0.9,
+      };
+
+      // Prune expired pointer ripples
+      if (ripplesRef.current.length > 0) {
+        ripplesRef.current = ripplesRef.current.filter(
+          (r) => elapsed - r.birthSec <= 2.4
+        );
+      }
 
       // Smoothly cross-dissolve WebGL scene weights and per-chapter color palettes
       currentStateRef.current = lerpShaderState(
@@ -678,7 +770,7 @@ export const LivingStoryCanvas: React.FC<LivingStoryCanvasProps> = ({
           ctx2d.clearRect(0, 0, width, height);
         }
 
-        // 1. Render bespoke chapter-specific narrative animation (Constructing Eden, Serpent, Fig Leaves, Flaming Sword, Dove, etc.)
+        // 1a. Previous chapter motif cross-dissolve during transitions
         if (prevMotifRef.current && motifBlendRef.current < 1.0) {
           renderChapterAnimationOverlay({
             ctx: ctx2d,
@@ -691,8 +783,13 @@ export const LivingStoryCanvas: React.FC<LivingStoryCanvasProps> = ({
             windIntensity: st.windIntensity,
             lightBloom: st.lightBloom,
             pointer: pointerRef.current,
+            pointerVelocity: pointerVelocityRef.current,
           });
         }
+
+        // 1b. Active chapter motif (modulated by continuous scroll morphing if near end of chapter)
+        const activeAlpha =
+          motifBlendRef.current * (1.0 - scrollMorphRef.current * 0.65);
 
         renderChapterAnimationOverlay({
           ctx: ctx2d,
@@ -700,16 +797,57 @@ export const LivingStoryCanvas: React.FC<LivingStoryCanvasProps> = ({
           height,
           elapsed,
           motif: activeMotifRef.current,
-          alpha: motifBlendRef.current,
+          alpha: activeAlpha,
           surge: surgeEnergyRef.current,
           windIntensity: st.windIntensity,
           lightBloom: st.lightBloom,
           pointer: pointerRef.current,
+          pointerVelocity: pointerVelocityRef.current,
         });
 
-        // 2. Render subtle atmospheric light motes
+        // 1c. Dual-motif continuous scroll pre-morphing into upcoming chapter
+        if (nextMotifRef.current && scrollMorphRef.current > 0.02) {
+          renderChapterAnimationOverlay({
+            ctx: ctx2d,
+            width,
+            height,
+            elapsed,
+            motif: nextMotifRef.current,
+            alpha: scrollMorphRef.current,
+            surge: surgeEnergyRef.current,
+            windIntensity: st.windIntensity,
+            lightBloom: st.lightBloom,
+            pointer: pointerRef.current,
+            pointerVelocity: pointerVelocityRef.current,
+          });
+        }
+
+        // 1d. Render interactive pointer ripples when touching/stirring the canvas
+        if (ripplesRef.current.length > 0) {
+          renderInteractivePointerRipples(
+            ctx2d,
+            width,
+            height,
+            elapsed,
+            ripplesRef.current
+          );
+        }
+
+        // 2. Render subtle atmospheric light motes with pointer-repulsion physics
+        const ptrPx = pointerRef.current.x * width;
+        const ptrPy = pointerRef.current.y * height;
+
         for (let i = 0; i < motes.length; i++) {
           const m = motes[i];
+          const dx = m.x - ptrPx;
+          const dy = m.y - ptrPy;
+          const dist = Math.hypot(dx, dy);
+          if (dist > 1 && dist < 140) {
+            const push = ((140 - dist) / 140) * 0.55;
+            m.x += (dx / dist) * push + pointerVelocityRef.current.vx * 18;
+            m.y += (dy / dist) * push + pointerVelocityRef.current.vy * 18;
+          }
+
           m.x +=
             (m.vx + Math.sin(elapsed * 0.6 + i) * 0.08) *
             (1 + st.windIntensity * 0.8);
@@ -740,7 +878,7 @@ export const LivingStoryCanvas: React.FC<LivingStoryCanvasProps> = ({
           ctx2d.beginPath();
           ctx2d.arc(m.x, m.y, m.size, 0, Math.PI * 2);
           ctx2d.fillStyle = m.color;
-          ctx2d.globalAlpha = m.alpha * 0.45;
+          ctx2d.globalAlpha = m.alpha * (inspectionMode ? 0.68 : 0.45);
           ctx2d.fill();
         }
         ctx2d.globalAlpha = 1;
@@ -753,34 +891,76 @@ export const LivingStoryCanvas: React.FC<LivingStoryCanvasProps> = ({
       cancelAnimationFrame(rafId);
       window.removeEventListener('resize', resize);
     };
-  }, []);
+  }, [inspectionMode]);
+
+  const spawnRippleAt = (normX: number, normY: number, strength = 0.85) => {
+    ripplesRef.current = [
+      ...ripplesRef.current.slice(-7),
+      {
+        x: normX,
+        y: normY,
+        birthSec: elapsedRef.current,
+        strength,
+      },
+    ];
+  };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!interactive) return;
     const rect = e.currentTarget.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
-    pointerRef.current = {
-      x: (e.clientX - rect.left) / rect.width,
-      y: (e.clientY - rect.top) / rect.height,
-    };
+    const nextX = (e.clientX - rect.left) / rect.width;
+    const nextY = (e.clientY - rect.top) / rect.height;
+    const vx = nextX - pointerRef.current.x;
+    const vy = nextY - pointerRef.current.y;
+    const speed = Math.hypot(vx, vy);
+
+    pointerVelocityRef.current = { vx, vy };
+    pointerRef.current = { x: nextX, y: nextY };
+
+    if (speed > 0.018 || e.buttons > 0) {
+      surgeEnergyRef.current = Math.min(1.0, surgeEnergyRef.current + speed * 2.2);
+      if (speed > 0.032 || e.buttons > 0) {
+        spawnRippleAt(nextX, nextY, Math.min(0.95, 0.35 + speed * 8));
+        if (onPointerAudioRipple) {
+          onPointerAudioRipple(nextX, nextY, Math.min(1.0, speed * 12));
+        }
+      }
+    }
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!interactive) return;
-    handlePointerMove(e);
-    surgeEnergyRef.current = 0.85;
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      const nextX = (e.clientX - rect.left) / rect.width;
+      const nextY = (e.clientY - rect.top) / rect.height;
+      pointerRef.current = { x: nextX, y: nextY };
+      spawnRippleAt(nextX, nextY, 1.0);
+      if (onPointerAudioRipple) {
+        onPointerAudioRipple(nextX, nextY, 0.9);
+      }
+    }
+    surgeEnergyRef.current = 0.92;
   };
 
-  const radialScrimOpacity = highContrast ? 0.82 : 0.62;
+  const radialScrimOpacity = inspectionMode
+    ? 0.08
+    : highContrast
+      ? 0.82
+      : 0.62;
 
   return (
     <div
       onPointerMove={handlePointerMove}
       onPointerDown={handlePointerDown}
       data-testid="living-story-canvas"
-      data-chapter-motif={liveTargetState.motif}
-      data-chapter-label={liveTargetState.motifLabel}
-      className={`overflow-hidden select-none bg-[#06080E] ${className}`}
+      data-chapter-motif={primaryTargetState.motif}
+      data-chapter-label={primaryTargetState.motifLabel}
+      data-inspection-mode={inspectionMode ? 'true' : 'false'}
+      className={`overflow-hidden select-none bg-[#06080E] ${
+        inspectionMode ? 'cursor-crosshair' : ''
+      } ${className}`}
       aria-hidden="true"
     >
       {/* Optional Chapter Background Image Asset with Smooth Atmospheric Blend */}
@@ -806,7 +986,7 @@ export const LivingStoryCanvas: React.FC<LivingStoryCanvasProps> = ({
 
       {/* Soft centered radial vignette for effortless text legibility while keeping side animations vivid */}
       <div
-        className="absolute inset-0 pointer-events-none"
+        className="absolute inset-0 pointer-events-none transition-opacity duration-700"
         style={{
           background: `radial-gradient(ellipse 560px 760px at center, rgba(0, 0, 0, ${radialScrimOpacity}) 0%, rgba(0, 0, 0, ${
             radialScrimOpacity * 0.48
